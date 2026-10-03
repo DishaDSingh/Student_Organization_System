@@ -8,6 +8,7 @@ import { seedFundraisers } from "./fundraisers";
 import { seedFinance } from "./finance";
 import { seedMemory } from "./memory";
 import { seedSecurity } from "./security";
+import { seedAnnouncements } from "./announcements";
 
 /**
  * `npm run db:seed` — wipes the local database and rebuilds the demo dataset.
@@ -20,6 +21,7 @@ async function main() {
   try {
     console.log(`Resetting demo data (${SEED_SIZE} dataset)…`);
     // Children before parents. Later phases prepend their tables here.
+    await db.announcement.deleteMany();
     await db.cameraAccess.deleteMany();
     await db.camera.deleteMany();
     await db.memoryItem.deleteMany();
@@ -86,6 +88,9 @@ async function main() {
 
     console.log("Phase 15: security cameras...");
     console.table(await seedSecurity(db));
+
+    console.log("Phase 22: announcements...");
+    console.table(await seedAnnouncements(db));
   } finally {
     await db.$disconnect();
   }

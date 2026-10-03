@@ -1,10 +1,18 @@
 # CampusBuzz
 
-**The operating system for student organizations.** Members, events, tickets, merchandise, volunteers, fundraisers and
-finance in one place, with role-based access, a full audit trail and (in later phases) an AI layer that explains its
-reasoning.
+**An intelligent operating system for student organizations.** One place for members, events, tickets, merchandise,
+volunteers, fundraisers and finance — replacing spreadsheets, cash notebooks and chat threads — with a layer that
+explains what's happening and helps plan what's next. Every AI feature proposes; a person decides.
 
-> Built phase by phase. Complete: **Phases 1–2** (Master Admin, organization setup, role & permission engine) **Phase 3** (membership, dues, renewals, digital pass) **Phase 4** (events, tickets, check-in, live command center) **Phase 5** (merchandise, inventory, AI Merch Studio), **Phase 6** (fundraisers, tasks, volunteer matching) **Phases 7–8** (finance, expenses, AI receipt scanner) and **Phase 9** (analytics engine).
+| Layer          | What it covers                                                                                                      |
+| -------------- | ------------------------------------------------------------------------------------------------------------------- |
+| **Operate**    | Members & digital pass · Events, tickets & check-in · Merch · Volunteers · Fundraisers · Finance · Security cameras |
+| **Understand** | Insights & organization pulse · Ask (data copilot) · Analytics · Reports & summaries                                |
+| **Anticipate** | What-if simulator · Calendar & smart reminders · Meeting intelligence · Organization memory                         |
+
+> All 25 phases are built: foundation and access control (1–2), the core modules (3–8), analytics, insights, copilot,
+> summaries and reports (9–13), calendar, CCTV, memory, simulation, pulse, meetings and handover (14–20), audit,
+> role dashboards, UI and AI principles (21–24), and the product architecture below (25).
 
 ---
 
@@ -28,14 +36,15 @@ No seed? Visit `http://localhost:3000` and the **setup wizard** creates your org
 
 All seeded accounts share the password defined as `DEMO_PASSWORD` in [`prisma/seed/shared.ts`](prisma/seed/shared.ts).
 
-| Persona       | Email                    | What to look at                                              |
-| ------------- | ------------------------ | ------------------------------------------------------------ |
-| Master Admin  | `admin@horizon.test`     | Everything; can grant Master Admin                           |
-| President     | `president@horizon.test` | Broad view, no CCTV, has a GRANT override for expense backup |
-| Treasurer     | `treasurer@horizon.test` | Finance-only — admin pages return "no access"                |
-| Secretary     | `secretary@horizon.test` | Can create users but **not** assign roles                    |
-| Event Head    | `events@horizon.test`    | Has a DENY override on refunds                               |
-| Security Head | `security@horizon.test`  | Only preset with CCTV permissions                            |
+| Persona       | Email                         | What to look at                                                               |
+| ------------- | ----------------------------- | ----------------------------------------------------------------------------- |
+| Master Admin  | `admin@horizon.test`          | Everything; can grant Master Admin                                            |
+| President     | `president@horizon.test`      | Pulse + insights on the dashboard, What if?, reports, announcements, no CCTV  |
+| Treasurer     | `treasurer@horizon.test`      | Finance: approvals, pay-backs, budgets; admin pages return "no access"        |
+| Secretary     | `secretary@horizon.test`      | Can create users but **not** assign roles                                     |
+| Event Head    | `events@horizon.test`         | Organizes the Diwali Gala; sees only that event's cameras; DENY on refunds    |
+| Security Head | `security@horizon.test`       | Every camera, live + playback; each view is logged                            |
+| Member        | `bhamini.sharma@horizon.test` | The simple member view: pass, events, tickets, merch, announcements, calendar |
 
 Other personas: `vp@`, `volunteers@`, `merch@`, `comms@`, `deputy.events@`, `fundraising@` (all `@horizon.test`).
 
@@ -45,7 +54,9 @@ standing is visible on **/members**; regular members see their own pass at **/me
 ~5 weeks) has ticket sales that started strong and then slowed, and the **Freshers' Welcome Mixer** is live today, so the
 command center shows real arrivals. The **Winter Clothes Drive** fundraiser is behind its goal with two overdue tasks.
 On **/finance** the treasurer has a queue of expense claims to review (Freshers snacks among them) and four people
-waiting to be paid back.
+waiting to be paid back. **Insights** flag the Gala slowdown and the expiring memberships (with a one-click renewal
+reminder draft), last year's Gala debrief and lessons are in **Memory**, this year's Gala planning notes are waiting in
+**Meetings** to be turned into tasks, and an AI-written renewal reminder waits in **Announcements** for a person to send.
 
 ---
 
@@ -135,6 +146,49 @@ Each phase lists only what it **adds**. Nothing is added unless it earns its pla
 | **Server-rendered SVG charts**                      | No chart library or client JS — instant, offline, themed, with hover values                                    |
 | **Monthly budgets**                                 | One limit per spending category; the Finance tab shows how much of each is used this month                     |
 
+### Phases 10, 11, 18 · Insights, copilot & organization pulse
+
+| Adds                          | Why                                                                                                            |
+| ----------------------------- | -------------------------------------------------------------------------------------------------------------- |
+| **Rule-based insight engine** | Each insight states its threshold ("why"), shows the evidence rows and suggests a next step — no mystery score |
+| **Explainable pulse**         | One colour per area derived only from those insights; click to see why it's orange and what was checked        |
+| **Grounded copilot**          | Claude only picks _which_ question you asked; every number is computed from the database and cited             |
+
+### Phases 12, 13, 20 · Summaries, reports & handover
+
+| Adds                        | Why                                                                                                 |
+| --------------------------- | --------------------------------------------------------------------------------------------------- |
+| **Fact-first builders**     | Event, finance, membership, fundraiser, merch, volunteer reports, period summaries and the handover |
+| **Number-locked AI polish** | Claude may rewrite wording; any section whose numbers change is rejected automatically              |
+| **Edit → final → export**   | Every section editable; print-to-PDF page and Markdown download, both audited                       |
+
+### Phases 14, 16, 19 · Calendar, memory & meetings
+
+| Adds                      | Why                                                                                                      |
+| ------------------------- | -------------------------------------------------------------------------------------------------------- |
+| **One calendar**          | Events, sales closing, meetings, deadlines, expiries, fundraiser dates, your tasks — permission-filtered |
+| **Smart reminders**       | Event in 2 days, task overdue, sales closing, deadline tomorrow, meeting tomorrow — deduplicated         |
+| **Meeting intelligence**  | Notes/transcript → decisions, actions (owner + date), questions; tasks only after "Confirm"              |
+| **Offline memory search** | Year-aware ranking over lessons, decisions, vendors, sponsors, reports, meetings and past events         |
+
+### Phases 15, 17, 21 · CCTV, what-if & audit
+
+| Adds                     | Why                                                                                                            |
+| ------------------------ | -------------------------------------------------------------------------------------------------------------- |
+| **Scoped CCTV module**   | Security Head: all cameras; Event Head: own events' cameras (live only); everyone else: nothing                |
+| **Logged viewing**       | Privacy notice + purpose confirmation; every live/playback view logged with IP and device; no face recognition |
+| **Read-only simulator**  | A copy of live data + transparent formulas; the page has no server actions, so it can't change anything        |
+| **Readable audit trail** | Who, what, when, before → after, IP and device for every action                                                |
+
+### Phases 22–25 · Dashboards, UI, AI principles & architecture
+
+| Adds                              | Why                                                                                                      |
+| --------------------------------- | -------------------------------------------------------------------------------------------------------- |
+| **Role-aware dashboard**          | Permission-scoped to-dos plus the three panels that matter for the role (pulse, your events, coming up…) |
+| **Human-confirmed announcements** | AI drafts; a publisher confirms the exact recipient count; audiences: members, expiring, volunteers, all |
+| **"How AI works here" page**      | Every AI feature: what AI does, what a person does, the guardrail, and the offline fallback              |
+| **Three-layer navigation**        | Operate / Understand / Anticipate — the product architecture is the sidebar                              |
+
 ### Keeping it simple
 
 Busy pages are split into link-based tabs (`?tab=…`, so refresh, back and shared links still work), and the dashboard
@@ -222,27 +276,44 @@ Set `ANTHROPIC_API_KEY` in `.env` to enable AI features; without it they fall ba
 ## Architecture
 
 ```
-src/
-  app/
-    (auth)/            login, first-run setup, auth actions
-    (app)/             signed-in area (shell + pages)
-      dashboard/
-      admin/           users · roles · departments · committees · audit · organization
-      profile/         my profile, password, "what can I do and why"
-    api/               REST endpoints (user search, CSV exports)
-  lib/
-    rbac/              catalog · presets · resolve · guards · sync
-    auth/              session · password · current-user · rate-limit
-    validation/        Zod schemas shared by client and server
-    action.ts          guardedAction(): auth → permission → validation → handler
-    audit.ts           transactional audit writer + diff helper
-prisma/
-  schema.prisma        data model
-  seed/                deterministic demo dataset, one module per phase
-tests/                 Vitest unit tests
+                         MASTER ADMIN
+                              │
+                 ACCESS CONTROL (RBAC + audit trail)
+                              │
+   ┌──────────── OPERATE ──────────────────────────────────────┐
+   │ Members · Events · Tickets · Merch · Volunteers           │
+   │ Fundraisers · Finance · Security cameras                  │
+   └──────────────────────────┬────────────────────────────────┘
+                              │  organization data (Postgres)
+   ┌──────────── UNDERSTAND ──┴────────────────────────────────┐
+   │ Analytics · Insights + Pulse · Ask (copilot) · Reports    │
+   └──────────────────────────┬────────────────────────────────┘
+   ┌──────────── ANTICIPATE ──┴────────────────────────────────┐
+   │ What-if · Calendar + reminders · Meetings · Memory        │
+   └──────────────────────────┬────────────────────────────────┘
+                              ▼
+          AI PROPOSES → HUMAN REVIEWS → CONFIRMS → ACTION
 ```
 
-Every mutation goes through `guardedAction` and writes its audit row inside the same database transaction.
+```
+src/
+  app/(app)/           one folder per module (dashboard, members, events, merch, finance, insights,
+                       copilot, analytics, reports, calendar, meetings, memory, simulate, security, …)
+  app/api/             REST endpoints (exports, uploads, live event stream, report download)
+  lib/
+    rbac/              permission catalog · role presets · resolve · guards · sync
+    action.ts          guardedAction(): auth → permission → Zod validation → handler
+    audit.ts           transactional audit writer (who, what, before/after, IP, device)
+    ai/claude.ts       the single door to Claude — every caller has an offline fallback
+    analytics/ insights/ copilot/ reports/ calendar/ meetings/ memory/ simulate/ cctv/
+                       pure rules (unit-tested) + server loaders per feature
+prisma/
+  schema.prisma        data model · migrations/ one per phase · seed/ one module per phase
+tests/                 Vitest unit tests for every rule set
+```
+
+Every mutation goes through `guardedAction` and writes its audit row inside the same database transaction. AI
+output is always validated against a schema, never executes a sensitive action, and has an offline fallback.
 
 ---
 
@@ -256,4 +327,5 @@ Every mutation goes through `guardedAction` and writes its audit row inside the 
 | Intuitive navigation         | Permission-aware grouped sidebar, breadcrumbs, `Ctrl K` palette                             |
 | Git used by the whole team   | See [CONTRIBUTING.md](CONTRIBUTING.md): feature branches, PR template, CI on every PR       |
 | Backend APIs + local DB      | Server actions + REST routes, Prisma migrations, Postgres in Docker                         |
-| Offline / local-first        | No cloud dependency at runtime                                                              |
+| Offline / local-first        | No cloud dependency at runtime; every AI feature has an offline mode                        |
+| Trendy tech only with value  | AI proposes and explains, people confirm; SVG charts and SSE instead of heavy libraries     |

@@ -15,6 +15,8 @@ import {
   LayoutDashboardIcon,
   ChartColumnIcon,
   LightbulbIcon,
+  SparklesIcon,
+  MegaphoneIcon,
   FlaskConicalIcon,
   CctvIcon,
   CalendarRangeIcon,
@@ -48,9 +50,43 @@ export type NavGroup = { label: string; items: NavItem[] };
  */
 export const NAV: NavGroup[] = [
   {
-    label: "Overview",
+    label: "Home",
     items: [
       { href: "/dashboard", label: "Dashboard", icon: LayoutDashboardIcon, keywords: "home overview" },
+      { href: "/announcements", label: "Announcements", icon: MegaphoneIcon, keywords: "news notices updates" },
+      { href: "/calendar", label: "Calendar", icon: CalendarRangeIcon, keywords: "schedule deadlines reminders dates" },
+    ],
+  },
+  {
+    // Layer 1 — run the organization day to day.
+    label: "Operate",
+    items: [
+      { href: "/members", label: "Members", icon: UserRoundCheckIcon, anyOf: ["members.view"], keywords: "dues renewals expiry" },
+      { href: "/members/verify", label: "Verify pass", icon: ScanLineIcon, anyOf: ["members.verify"], keywords: "scan qr door check" },
+      { href: "/events", label: "Events", icon: CalendarDaysIcon, keywords: "gala tickets check-in" },
+      { href: "/merch", label: "Merch", icon: ShirtIcon, keywords: "hoodie tshirt store inventory studio" },
+      { href: "/volunteers", label: "Volunteers", icon: HandHeartIcon, anyOf: ["volunteers.view"], keywords: "helpers roster" },
+      { href: "/fundraisers", label: "Fundraisers", icon: HandCoinsIcon, anyOf: ["fundraisers.view"], keywords: "donations goal tasks" },
+      {
+        href: "/finance",
+        label: "Finance",
+        icon: WalletIcon,
+        anyOf: ["finance.view", "finance.create_expense"],
+        keywords: "money expenses receipts reimbursement treasurer budget scan",
+      },
+      {
+        href: "/security",
+        label: "Security",
+        icon: CctvIcon,
+        anyOf: ["cctv.view", "cctv.live", "cctv.playback", "cctv.manage"],
+        keywords: "cctv cameras incidents",
+      },
+    ],
+  },
+  {
+    // Layer 2 — understand what's happening.
+    label: "Understand",
+    items: [
       { href: "/insights", label: "Insights", icon: LightbulbIcon, anyOf: ["analytics.view"], keywords: "alerts pulse health warnings" },
       {
         href: "/copilot",
@@ -60,6 +96,13 @@ export const NAV: NavGroup[] = [
         keywords: "chat copilot question assistant ai",
       },
       { href: "/analytics", label: "Analytics", icon: ChartColumnIcon, anyOf: ["analytics.view"], keywords: "charts trends growth stats" },
+      { href: "/reports", label: "Reports", icon: FileTextIcon, anyOf: ["reports.view"], keywords: "summary handover annual export pdf" },
+    ],
+  },
+  {
+    // Layer 3 — anticipate and remember.
+    label: "Anticipate",
+    items: [
       {
         href: "/simulate",
         label: "What if?",
@@ -67,41 +110,11 @@ export const NAV: NavGroup[] = [
         anyOf: ["analytics.simulate"],
         keywords: "simulate scenario sandbox forecast",
       },
-      { href: "/reports", label: "Reports", icon: FileTextIcon, anyOf: ["reports.view"], keywords: "summary handover annual export pdf" },
-    ],
-  },
-  {
-    label: "Operate",
-    items: [
-      { href: "/events", label: "Events", icon: CalendarDaysIcon, keywords: "gala tickets check-in" },
-      { href: "/merch", label: "Merch", icon: ShirtIcon, keywords: "hoodie tshirt store inventory studio" },
-      { href: "/fundraisers", label: "Fundraisers", icon: HandCoinsIcon, anyOf: ["fundraisers.view"], keywords: "donations goal tasks" },
-      {
-        href: "/security",
-        label: "Security",
-        icon: CctvIcon,
-        anyOf: ["cctv.view", "cctv.live", "cctv.playback", "cctv.manage"],
-        keywords: "cctv cameras incidents",
-      },
-      { href: "/volunteers", label: "Volunteers", icon: HandHeartIcon, anyOf: ["volunteers.view"], keywords: "helpers roster" },
-      {
-        href: "/finance",
-        label: "Finance",
-        icon: WalletIcon,
-        anyOf: ["finance.view", "finance.create_expense"],
-        keywords: "money expenses receipts reimbursement treasurer budget scan",
-      },
-    ],
-  },
-  {
-    label: "Plan",
-    items: [
-      { href: "/calendar", label: "Calendar", icon: CalendarRangeIcon, keywords: "schedule deadlines reminders dates" },
       {
         href: "/meetings",
         label: "Meetings",
         icon: NotebookPenIcon,
-        anyOf: ["calendar.view"],
+        anyOf: ["calendar.manage", "committees.view"],
         keywords: "minutes notes transcript decisions actions",
       },
       {
@@ -114,20 +127,19 @@ export const NAV: NavGroup[] = [
     ],
   },
   {
-    label: "Membership",
-    items: [
-      { href: "/members", label: "Members", icon: UserRoundCheckIcon, anyOf: ["members.view"], keywords: "dues renewals expiry" },
-      { href: "/members/verify", label: "Verify pass", icon: ScanLineIcon, anyOf: ["members.verify"], keywords: "scan qr door check" },
-      { href: "/members/plans", label: "Plans & benefits", icon: BadgeIndianRupeeIcon, anyOf: ["members.view"], keywords: "price dues" },
-    ],
-  },
-  {
     label: "Administration",
     items: [
       { href: "/admin/users", label: "Users", icon: UsersIcon, anyOf: ["users.view"], keywords: "people accounts" },
       { href: "/admin/roles", label: "Roles & permissions", icon: ShieldCheckIcon, anyOf: ["roles.view"], keywords: "rbac access" },
       { href: "/admin/departments", label: "Departments", icon: NetworkIcon, anyOf: ["departments.view"] },
       { href: "/admin/committees", label: "Committees", icon: UsersRoundIcon, anyOf: ["committees.view"] },
+      {
+        href: "/members/plans",
+        label: "Membership plans",
+        icon: BadgeIndianRupeeIcon,
+        anyOf: ["members.view"],
+        keywords: "price dues benefits",
+      },
       { href: "/admin/audit", label: "Audit log", icon: HistoryIcon, anyOf: ["audit.view"], keywords: "history activity security" },
       { href: "/admin/organization", label: "Organization", icon: Building2Icon, anyOf: ["organization.view"], keywords: "settings" },
     ],
@@ -141,6 +153,7 @@ export const NAV: NavGroup[] = [
       { href: "/me/volunteering", label: "Volunteering", icon: HandHeartIcon, keywords: "my tasks help" },
       { href: "/me", label: "My membership", icon: BadgeIndianRupeeIcon, keywords: "renew dues join" },
       { href: "/profile", label: "My profile & access", icon: UserCircleIcon, keywords: "password account" },
+      { href: "/ai", label: "How AI works here", icon: SparklesIcon, keywords: "ai principles privacy human review" },
     ],
   },
 ];

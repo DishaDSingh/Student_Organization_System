@@ -759,3 +759,23 @@ export const cameraIncidentSchema = z.object({
 });
 
 export const cameraViewSchema = z.object({ cameraId: id, kind: z.enum(["LIVE", "PLAYBACK"]) });
+
+// ─── Announcements (Phases 22, 24) ───────────────────────────────────────────
+
+const AUDIENCE_VALUES = ["MEMBERS", "EXPIRING", "VOLUNTEERS", "ALL"] as const;
+
+export const draftAnnouncementSchema = z.object({
+  brief: z.string().trim().min(10, "Describe what to announce (a sentence or two)").max(1000),
+  audience: z.enum(AUDIENCE_VALUES),
+  useAi: z.boolean().default(true),
+});
+
+export const saveAnnouncementSchema = z.object({
+  announcementId: id,
+  title: z.string().trim().min(3, "Add a title").max(120),
+  body: z.string().trim().min(10, "Write the announcement").max(5000),
+  audience: z.enum(AUDIENCE_VALUES),
+});
+
+/** The publisher confirms the exact recipient count they were shown. */
+export const publishAnnouncementSchema = z.object({ announcementId: id, confirmRecipients: z.number().int().min(0) });

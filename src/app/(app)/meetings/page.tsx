@@ -1,8 +1,10 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { NotebookPenIcon } from "lucide-react";
 import { db } from "@/lib/db";
 import { can, requirePermission } from "@/lib/auth/current-user";
+import { seesCommitteeItems } from "@/lib/calendar/load";
 import { EmptyState, PageHeader } from "@/components/common";
 import { cn } from "@/lib/utils";
 import { fmtDateTime, toDateInput } from "@/lib/format";
@@ -12,6 +14,8 @@ export const metadata: Metadata = { title: "Meetings" };
 
 export default async function MeetingsPage() {
   const user = await requirePermission("calendar.view");
+  // Meeting notes are committee business, not for every member.
+  if (!(await seesCommitteeItems(user))) redirect("/forbidden");
   const [meetings, committees] = await Promise.all([
     db.meeting.findMany({
       orderBy: { heldAt: "desc" },

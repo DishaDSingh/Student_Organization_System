@@ -101,6 +101,7 @@ model User {
   meetingsCreated     Meeting[]          @relation("MeetingCreator")
   calendarEntries     CalendarEntry[]    @relation("CalendarEntryCreator")
   memoriesCreated     MemoryItem[]       @relation("MemoryCreator")
+  announcements       Announcement[]     @relation("AnnouncementAuthor")
   fundraisersLed      Fundraiser[]       @relation("FundraiserLead")
   tasksAssigned       Task[]             @relation("TaskAssignee")
   tasksCreated        Task[]             @relation("TaskCreator")
@@ -1047,4 +1048,28 @@ model CameraAccess {
   camera Camera @relation(fields: [cameraId], references: [id], onDelete: Cascade)
 
   @@index([cameraId, createdAt])
+}
+
+// ─── Announcements (Phases 22, 24) ───────────────────────────────────────────
+
+/// Drafted by a person (optionally with AI help); sent only when someone with
+/// announcements.publish confirms. Publishing notifies the audience in-app.
+model Announcement {
+  id            String    @id @default(cuid())
+  title         String
+  body          String
+  /// ALL | MEMBERS | VOLUNTEERS
+  audience      String    @default("MEMBERS")
+  status        String    @default("DRAFT")
+  source        String    @default("manual")
+  recipients    Int       @default(0)
+  createdById   String?
+  publishedById String?
+  publishedAt   DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  createdBy User? @relation("AnnouncementAuthor", fields: [createdById], references: [id], onDelete: SetNull)
+
+  @@index([status, publishedAt])
 }

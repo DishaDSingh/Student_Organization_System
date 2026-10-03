@@ -96,6 +96,11 @@ async function membersChecks(now: Date): Promise<Insight[]> {
         ),
       },
       action: { label: "See expiring members", href: "/members?state=expiring" },
+      draft: {
+        label: "Draft a renewal reminder",
+        brief: `Friendly reminder: memberships ending this week can be renewed from the My membership page (UPI or cash at the desk). Renew before ${fmtDate(week)} to keep your member prices and digital pass.`,
+        audience: "EXPIRING",
+      },
     });
   }
   if (pending.length) {
@@ -126,6 +131,12 @@ async function membersChecks(now: Date): Promise<Insight[]> {
       why: "They checked in to 2 or more events in the last 6 months but have never been given a volunteer task — a friendly invite could grow the volunteer pool.",
       evidence: { columns: ["Member", "Events attended"], ...cut(keen.map((u) => [u.name, String(u.visits)])) },
       action: { label: "Open volunteers", href: "/volunteers" },
+      draft: {
+        label: "Draft a volunteer call",
+        brief:
+          "We're looking for volunteers for our upcoming events — set up, check-in, photography and more. Sign up from the Volunteering page and pick the times that suit you.",
+        audience: "MEMBERS",
+      },
     });
   }
   return out;
