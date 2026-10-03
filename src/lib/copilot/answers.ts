@@ -8,6 +8,7 @@ import { membershipCounts } from "@/lib/membership/load";
 import { raisedByFundraiser } from "@/lib/fundraisers";
 import { SPENT_STATUSES } from "@/lib/finance/rules";
 import { loadInsights } from "@/lib/insights/engine";
+import { searchMemory } from "@/lib/memory/search";
 import { INTENT_HELP, INTENTS, PERIOD_LABEL, matchScore, periodStart, type Intent, type Route } from "./router";
 
 /**
@@ -36,6 +37,7 @@ const NEEDS: Record<Intent, PermissionKey[] | null> = {
   finance_summary: ["finance.view"],
   upcoming_events: null,
   my_tasks: null,
+  memory: ["reports.view"],
   help: null,
 };
 
@@ -344,6 +346,26 @@ export async function answer(route: Route, user: CurrentUser): Promise<Answer> {
             }
           : undefined,
         sources: [{ label: "All insights", href: "/insights" }],
+      };
+    }
+
+    case "memory": {
+      const { hits } = await searchMemory(route.subject ?? "", now);
+      if (!hits.length)
+        return {
+          text: "I couldn't find anything about that in the organization's memory.",
+          sources: [{ label: "Memory", href: "/memory" }],
+        };
+      return {
+        text: "Here's what the organization's memory has, most relevant first:",
+        table: { columns: ["", "What", "Details"], rows: hits.slice(0, 5).map((h) => [h.kind, h.title, h.text]) },
+        sources: [
+          { label: "Search memory", href: `/memory?q=${encodeURIComponent(route.subject ?? "")}` },
+          ...hits
+            .slice(0, 3)
+            .filter((h) => h.href)
+            .map((h) => ({ label: h.title, href: h.href! })),
+        ],
       };
     }
 

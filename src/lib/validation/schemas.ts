@@ -668,3 +668,52 @@ export const saveReportSchema = z.object({
     .max(25),
   status: z.enum(["DRAFT", "FINAL"]),
 });
+
+// ─── Calendar, meetings, memory (Phases 14, 16, 19) ──────────────────────────
+
+export const calendarEntrySchema = z.object({
+  title: z.string().trim().min(3, "At least 3 characters").max(120),
+  kind: z.enum(["DEADLINE", "REMINDER", "OTHER"]),
+  startsAt: z.coerce.date({ error: "Pick a date and time" }),
+  notes: optionalText(300, "Notes"),
+  remind: z.boolean().default(true),
+});
+
+export const meetingSchema = z.object({
+  title: z.string().trim().min(3, "At least 3 characters").max(120),
+  heldAt: z.coerce.date({ error: "Pick a date and time" }),
+  committeeId: optionalId,
+  notes: z.string().trim().min(20, "Paste the notes or transcript (at least a couple of lines)").max(60_000, "That's too long — paste up to ~60,000 characters"),
+});
+
+export const confirmMeetingSchema = z.object({
+  meetingId: id,
+  summary: z.string().trim().max(2000),
+  decisions: z.array(z.string().trim().min(1).max(500)).max(50),
+  questions: z.array(z.string().trim().min(1).max(500)).max(50),
+  actions: z
+    .array(
+      z.object({
+        task: z.string().trim().min(3, "Describe the task").max(160),
+        ownerId: optionalId,
+        due: z.preprocess((v) => (v === "" || v == null ? undefined : v), z.coerce.date().optional()),
+        create: z.boolean(),
+      }),
+    )
+    .max(50),
+});
+
+export const memoryItemSchema = z.object({
+  kind: z.enum(["LESSON", "DECISION", "VENDOR", "SPONSOR", "DOCUMENT", "NOTE"]),
+  title: z.string().trim().min(3, "At least 3 characters").max(140),
+  body: z.string().trim().min(3, "Write a sentence or two").max(4000),
+  tags: z.preprocess(
+    (v) => (typeof v === "string" ? v.split(",").map((t) => t.trim().toLowerCase()).filter(Boolean) : v),
+    z.array(z.string().max(30)).max(10, "Up to 10 tags"),
+  ),
+  happenedAt: optionalDateInput,
+  eventId: optionalId,
+  url: optionalUrl,
+});
+
+export const askMemorySchema = z.object({ q: z.string().trim().min(2, "Ask a question").max(300) });
