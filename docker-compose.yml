@@ -1,0 +1,23 @@
+# Local PostgreSQL for CampusBuzz. Runs fully offline once the image is pulled.
+# Port 5433 so it never collides with a native Postgres install on 5432.
+services:
+  db:
+    image: postgres:17-alpine
+    container_name: campusbuzz-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: campusbuzz
+      POSTGRES_PASSWORD: campusbuzz_dev
+      POSTGRES_DB: campusbuzz
+    ports:
+      - "5433:5432"
+    volumes:
+      - campusbuzz-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U campusbuzz -d campusbuzz"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  campusbuzz-pgdata:

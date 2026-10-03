@@ -1,0 +1,9 @@
+src/generated
+src/components/ui
+prisma/migrations
+.next
+node_modules
+.agents
+.windsurf
+.claude/skills
+package-lock.json

@@ -1,0 +1,227 @@
+// CampusBuzz data model.
+// Phase 1–2: organization, people, departments, committees, RBAC, audit.
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ─── Organization ────────────────────────────────────────────────────────────
+// One installation = one student organization. Created by the setup wizard.
+
+model Organization {
+  id                String   @id @default(cuid())
+  name              String
+  shortName         String
+  description       String?
+  email             String?
+  phone             String?
+  website           String?
+  address           String?
+  institution       String?
+  /// Month (1-12) the academic year starts; drives terms and reports.
+  academicYearStart Int      @default(7)
+  currency          String   @default("INR")
+  timezone          String   @default("Asia/Kolkata")
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+}
+
+// ─── People ──────────────────────────────────────────────────────────────────
+
+enum UserStatus {
+  INVITED
+  ACTIVE
+  SUSPENDED
+}
+
+model User {
+  id             String     @id @default(cuid())
+  email          String     @unique
+  name           String
+  phone          String?
+  /// College roll / enrollment number.
+  studentId      String?    @unique
+  passwordHash   String
+  status         UserStatus @default(ACTIVE)
+  /// Highest authority. Bypasses permission checks; at least one must always exist.
+  isMasterAdmin  Boolean    @default(false)
+  /// Bumped on suspend / password change to invalidate existing sessions.
+  sessionVersion Int        @default(0)
+  departmentId   String?
+  lastLoginAt    DateTime?
+  createdAt      DateTime   @default(now())
+  updatedAt      DateTime   @updatedAt
+
+  department          Department?       @relation("DepartmentMembers", fields: [departmentId], references: [id], onDelete: SetNull)
+  headOfDepartments   Department[]      @relation("DepartmentHead")
+  chairOfCommittees   Committee[]       @relation("CommitteeChair")
+  committees          CommitteeMember[]
+  roles               UserRole[]        @relation("UserRoles")
+  rolesAssigned       UserRole[]        @relation("RoleAssigner")
+  permissionOverrides UserPermission[]  @relation("UserOverrides")
+  overridesGranted    UserPermission[]  @relation("OverrideGranter")
+  auditLogs           AuditLog[]
+
+  @@index([status])
+  @@index([departmentId])
+}
+
+/// Functional area of the organization (Finance, Events, Merchandise…).
+model Department {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  code        String   @unique
+  description String?
+  headId      String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  head       User?       @relation("DepartmentHead", fields: [headId], references: [id], onDelete: SetNull)
+  members    User[]      @relation("DepartmentMembers")
+  committees Committee[]
+}
+
+/// Term-bound working group (e.g. Spring Gala Committee 2026).
+model Committee {
+  id           String    @id @default(cuid())
+  name         String    @unique
+  description  String?
+  departmentId String?
+  chairId      String?
+  termStart    DateTime
+  termEnd      DateTime?
+  isActive     Boolean   @default(true)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  department Department?       @relation(fields: [departmentId], references: [id], onDelete: SetNull)
+  chair      User?             @relation("CommitteeChair", fields: [chairId], references: [id], onDelete: SetNull)
+  members    CommitteeMember[]
+}
+
+model CommitteeMember {
+  committeeId String
+  userId      String
+  position    String   @default("Member")
+  joinedAt    DateTime @default(now())
+
+  committee Committee @relation(fields: [committeeId], references: [id], onDelete: Cascade)
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([committeeId, userId])
+  @@index([userId])
+}
+
+// ─── Access control ──────────────────────────────────────────────────────────
+// Effective permissions = union(role permissions) + user GRANTs − user DENYs.
+// Master admins bypass checks. Nobody else sees everything by default.
+
+/// Catalog row, synced from src/lib/rbac/catalog.ts so FKs stay valid.
+model Permission {
+  key         String  @id // e.g. "finance.approve_expense"
+  module      String
+  action      String
+  label       String
+  description String
+  isSensitive Boolean @default(false)
+  sortOrder   Int     @default(0)
+
+  roles     RolePermission[]
+  overrides UserPermission[]
+
+  @@index([module])
+}
+
+model Role {
+  id          String   @id @default(cuid())
+  /// Stable identifier used by presets; system roles keep theirs.
+  key         String   @unique
+  name        String   @unique
+  description String?
+  color       String   @default("slate")
+  /// System roles can be re-permissioned but not renamed or deleted.
+  isSystem    Boolean  @default(false)
+  /// Lower = more senior. Used for ordering only, never for authorization.
+  rank        Int      @default(100)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  permissions RolePermission[]
+  users       UserRole[]
+}
+
+model RolePermission {
+  roleId        String
+  permissionKey String
+
+  role       Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission Permission @relation(fields: [permissionKey], references: [key], onDelete: Cascade)
+
+  @@id([roleId, permissionKey])
+}
+
+model UserRole {
+  userId       String
+  roleId       String
+  assignedById String?
+  assignedAt   DateTime @default(now())
+
+  user       User  @relation("UserRoles", fields: [userId], references: [id], onDelete: Cascade)
+  role       Role  @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  assignedBy User? @relation("RoleAssigner", fields: [assignedById], references: [id], onDelete: SetNull)
+
+  @@id([userId, roleId])
+  @@index([roleId])
+}
+
+enum PermissionEffect {
+  GRANT
+  DENY
+}
+
+/// Per-user exception on top of roles ("Treasurer, but no export").
+model UserPermission {
+  userId        String
+  permissionKey String
+  effect        PermissionEffect
+  reason        String?
+  grantedById   String?
+  createdAt     DateTime         @default(now())
+
+  user       User       @relation("UserOverrides", fields: [userId], references: [id], onDelete: Cascade)
+  permission Permission @relation(fields: [permissionKey], references: [key], onDelete: Cascade)
+  grantedBy  User?      @relation("OverrideGranter", fields: [grantedById], references: [id], onDelete: SetNull)
+
+  @@id([userId, permissionKey])
+}
+
+// ─── Audit ───────────────────────────────────────────────────────────────────
+// Append-only. Application code never updates or deletes rows here.
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  actorId    String?
+  /// Snapshot so the log stays readable if the user is later removed.
+  actorName  String
+  action     String // e.g. "role.permissions.update"
+  entityType String // e.g. "Role"
+  entityId   String?
+  summary    String
+  before     Json?
+  after      Json?
+  ip         String?
+  userAgent  String?
+  createdAt  DateTime @default(now())
+
+  actor User? @relation(fields: [actorId], references: [id], onDelete: SetNull)
+
+  @@index([createdAt])
+  @@index([entityType, entityId])
+  @@index([actorId])
+  @@index([action])
+}
