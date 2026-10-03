@@ -11,7 +11,11 @@ export default async function NewEventPage() {
   const committees = await db.committee.findMany({ where: { isActive: true }, orderBy: { name: "asc" }, select: { id: true, name: true } });
   return (
     <>
-      <PageHeader title="New event" description="Starts as a draft. Add ticket types, then publish to open sales." back={{ href: "/events", label: "Events" }} />
+      <PageHeader
+        title="New event"
+        description="Starts as a draft. Add ticket types, then publish to open sales."
+        back={{ href: "/events", label: "Events" }}
+      />
       <EventForm
         committees={committees}
         defaults={{

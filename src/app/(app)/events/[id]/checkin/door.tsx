@@ -48,7 +48,12 @@ export function DoorStation({ eventId, capacity }: { eventId: string; capacity: 
             });
           }}
         >
-          <Input value={code} onChange={(e) => setCode(e.target.value)} placeholder="Or paste / type the ticket code" aria-label="Ticket code" />
+          <Input
+            value={code}
+            onChange={(e) => setCode(e.target.value)}
+            placeholder="Or paste / type the ticket code"
+            aria-label="Ticket code"
+          />
           <Button type="submit" variant="secondary" disabled={pending || code.trim().length < 8}>
             {pending && <Loader2Icon className="animate-spin" />}
             Check in
@@ -97,7 +102,9 @@ function ResultCard({ r }: { r: CheckInResult }) {
         tone === "destructive" && "border-destructive/40 bg-destructive/6",
       )}
     >
-      <Icon className={cn("size-12 shrink-0", tone === "success" ? "text-success" : tone === "warning" ? "text-amber-600" : "text-destructive")} />
+      <Icon
+        className={cn("size-12 shrink-0", tone === "success" ? "text-success" : tone === "warning" ? "text-amber-600" : "text-destructive")}
+      />
       <div className="min-w-0">
         <p className="text-xl font-semibold">
           {r.result === "ADMITTED" ? "Admit" : r.result === "ALREADY_IN" ? "Already checked in" : "Do not admit"}
@@ -110,7 +117,8 @@ function ResultCard({ r }: { r: CheckInResult }) {
         )}
         <p className="text-muted-foreground text-sm">
           {r.result === "ADMITTED" && (r.isMemberPrice ? "Member ticket — check their member pass if unsure." : "Welcome in.")}
-          {r.result === "ALREADY_IN" && `Entered at ${new Date(r.at).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit", hour12: false })}${r.by ? ` via ${r.by}` : ""}. Possible shared ticket.`}
+          {r.result === "ALREADY_IN" &&
+            `Entered at ${new Date(r.at).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit", hour12: false })}${r.by ? ` via ${r.by}` : ""}. Possible shared ticket.`}
           {r.result === "REJECTED" && r.reason}
         </p>
       </div>
@@ -140,7 +148,10 @@ function DoorSaleForm({ eventId, types }: { eventId: string; types: { id: string
         className="mt-4 grid gap-4"
         onSubmit={form.handleSubmit((values) =>
           startTransition(async () => {
-            const res = await doorSale({ ...values, lines: Object.entries(qty).map(([ticketTypeId, quantity]) => ({ ticketTypeId, quantity })) });
+            const res = await doorSale({
+              ...values,
+              lines: Object.entries(qty).map(([ticketTypeId, quantity]) => ({ ticketTypeId, quantity })),
+            });
             if (!res.ok) {
               applyServerErrors(res.fieldErrors, form.setError);
               return void toast.error(res.fieldErrors?.lines?.[0] ?? res.error);
@@ -196,7 +207,9 @@ function DoorSaleForm({ eventId, types }: { eventId: string; types: { id: string
           {pending && <Loader2Icon className="animate-spin" />}
           Record sale
         </Button>
-        <p className="text-muted-foreground text-xs">The price is worked out on the server from the buyer&apos;s current membership; the total appears in the confirmation.</p>
+        <p className="text-muted-foreground text-xs">
+          The price is worked out on the server from the buyer&apos;s current membership; the total appears in the confirmation.
+        </p>
       </form>
     </section>
   );

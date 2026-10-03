@@ -308,7 +308,10 @@ export const eventSchema = z
     committeeId: optionalId,
   })
   .refine((v) => v.endsAt > v.startsAt, { path: ["endsAt"], message: "Must end after it starts" })
-  .refine((v) => !v.salesCloseAt || v.salesCloseAt <= v.endsAt, { path: ["salesCloseAt"], message: "Sales must close before the event ends" })
+  .refine((v) => !v.salesCloseAt || v.salesCloseAt <= v.endsAt, {
+    path: ["salesCloseAt"],
+    message: "Sales must close before the event ends",
+  })
   .refine((v) => !v.salesOpenAt || !v.salesCloseAt || v.salesOpenAt < v.salesCloseAt, {
     path: ["salesCloseAt"],
     message: "Must be after sales open",
@@ -327,7 +330,10 @@ export const ticketTypeSchema = z
     membersOnly: z.boolean().default(false),
     isActive: z.boolean().default(true),
   })
-  .refine((v) => v.memberPriceRupees <= v.publicPriceRupees, { path: ["memberPriceRupees"], message: "Member price can't exceed the public price" });
+  .refine((v) => v.memberPriceRupees <= v.publicPriceRupees, {
+    path: ["memberPriceRupees"],
+    message: "Member price can't exceed the public price",
+  });
 
 const ticketLines = z
   .array(z.object({ ticketTypeId: id, quantity: z.coerce.number().int().min(0).max(10) }))
@@ -364,4 +370,9 @@ export const incidentSchema = z.object({
   location: optionalText(80, "Location"),
 });
 export const resolveIncidentSchema = z.object({ incidentId: id, resolution: z.string().trim().min(3, "How was it resolved?").max(300) });
-export const checkInSchema = z.object({ code: z.string().trim().regex(/^[A-Za-z0-9_-]{16,64}$/, "Not a ticket code") });
+export const checkInSchema = z.object({
+  code: z
+    .string()
+    .trim()
+    .regex(/^[A-Za-z0-9_-]{16,64}$/, "Not a ticket code"),
+});

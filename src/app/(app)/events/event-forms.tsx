@@ -28,7 +28,14 @@ import { UserPicker, type PickedUser } from "@/components/form/user-picker";
 import { cn } from "@/lib/utils";
 import { formatINR } from "@/lib/membership/rules";
 import { EVENT_CATEGORIES } from "@/lib/events/rules";
-import { cancelEventSchema, confirmOrderSchema, eventSchema, incidentSchema, ticketTypeSchema, voidOrderSchema } from "@/lib/validation/schemas";
+import {
+  cancelEventSchema,
+  confirmOrderSchema,
+  eventSchema,
+  incidentSchema,
+  ticketTypeSchema,
+  voidOrderSchema,
+} from "@/lib/validation/schemas";
 import { PaymentFields } from "../members/member-forms";
 import {
   buyTickets,
@@ -67,7 +74,9 @@ export function EventForm({ defaults, committees }: { defaults: EventDefaults; c
   const form = useForm<z.input<typeof eventSchema>>({
     resolver: zodResolver(eventSchema),
     mode: "onTouched",
-    defaultValues: { ...defaults, eventId: defaults.eventId ?? "", organizerId: defaults.organizer?.id ?? "" } as z.input<typeof eventSchema>,
+    defaultValues: { ...defaults, eventId: defaults.eventId ?? "", organizerId: defaults.organizer?.id ?? "" } as z.input<
+      typeof eventSchema
+    >,
   });
   const e = form.formState.errors;
 
@@ -111,7 +120,11 @@ export function EventForm({ defaults, committees }: { defaults: EventDefaults; c
           </Field>
         </div>
         <Field id="description" label="Description" error={e.description?.message}>
-          <Textarea rows={6} placeholder="What should people expect? Dress code, schedule, what's included…" {...form.register("description")} />
+          <Textarea
+            rows={6}
+            placeholder="What should people expect? Dress code, schedule, what's included…"
+            {...form.register("description")}
+          />
         </Field>
       </section>
 
@@ -249,7 +262,13 @@ export function TicketTypeDialog({ eventId, type }: { eventId: string; type?: Ti
             </Field>
           </div>
           <div className="grid grid-cols-2 gap-4">
-            <Field id="tt-qty" label="Quantity" required hint={type ? `${type.allocated} sold or held` : undefined} error={e.quantity?.message}>
+            <Field
+              id="tt-qty"
+              label="Quantity"
+              required
+              hint={type ? `${type.allocated} sold or held` : undefined}
+              error={e.quantity?.message}
+            >
               <Input type="number" inputMode="numeric" min={1} {...form.register("quantity")} />
             </Field>
             <Field id="tt-max" label="Max per order" error={e.maxPerOrder?.message}>
@@ -301,7 +320,9 @@ export function PublishButton({ eventId }: { eventId: string }) {
       <AlertDialogContent>
         <AlertDialogHeader>
           <AlertDialogTitle>Publish and open ticket sales?</AlertDialogTitle>
-          <AlertDialogDescription>The event becomes visible to every member and tickets go on sale (from the sales-open time, if set).</AlertDialogDescription>
+          <AlertDialogDescription>
+            The event becomes visible to every member and tickets go on sale (from the sales-open time, if set).
+          </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
           <AlertDialogCancel>Not yet</AlertDialogCancel>
@@ -408,7 +429,9 @@ export function VoidOrderButton({ orderId, paid }: { orderId: string; paid: bool
         </Button>
       }
       title={paid ? "Refund this order?" : "Cancel this unpaid order?"}
-      description={paid ? "Marks the payment refunded and releases the seats. Hand the money back before confirming." : "Releases the held seats."}
+      description={
+        paid ? "Marks the payment refunded and releases the seats. Hand the money back before confirming." : "Releases the held seats."
+      }
       confirmLabel={paid ? "Refund" : "Cancel order"}
       schema={voidOrderSchema}
       defaults={{ orderId, reason: "" }}
@@ -417,7 +440,15 @@ export function VoidOrderButton({ orderId, paid }: { orderId: string; paid: bool
   );
 }
 
-export function ConfirmOrderDialog({ orderId, totalPaise, claimedReference }: { orderId: string; totalPaise: number; claimedReference: string | null }) {
+export function ConfirmOrderDialog({
+  orderId,
+  totalPaise,
+  claimedReference,
+}: {
+  orderId: string;
+  totalPaise: number;
+  claimedReference: string | null;
+}) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [pending, startTransition] = useTransition();
@@ -453,7 +484,9 @@ export function ConfirmOrderDialog({ orderId, totalPaise, claimedReference }: { 
         >
           <DialogHeader>
             <DialogTitle>Confirm {formatINR(totalPaise)} received</DialogTitle>
-            <DialogDescription>Tickets become valid for entry.{claimedReference && " Check the buyer's reference against your statement first."}</DialogDescription>
+            <DialogDescription>
+              Tickets become valid for entry.{claimedReference && " Check the buyer's reference against your statement first."}
+            </DialogDescription>
           </DialogHeader>
           <PaymentFields register={form.register as never} errors={form.formState.errors} method={method} />
           <DialogFooter>
@@ -470,9 +503,26 @@ export function ConfirmOrderDialog({ orderId, totalPaise, claimedReference }: { 
 
 // ─── Buying ──────────────────────────────────────────────────────────────────
 
-type BuyType = { id: string; name: string; description: string | null; memberPricePaise: number; publicPricePaise: number; remaining: number; maxPerOrder: number; membersOnly: boolean };
+type BuyType = {
+  id: string;
+  name: string;
+  description: string | null;
+  memberPricePaise: number;
+  publicPricePaise: number;
+  remaining: number;
+  maxPerOrder: number;
+  membersOnly: boolean;
+};
 
-export function BuyTicketsPanel({ eventId, types, memberPriceAvailable }: { eventId: string; types: BuyType[]; memberPriceAvailable: boolean }) {
+export function BuyTicketsPanel({
+  eventId,
+  types,
+  memberPriceAvailable,
+}: {
+  eventId: string;
+  types: BuyType[];
+  memberPriceAvailable: boolean;
+}) {
   const router = useRouter();
   const [qty, setQty] = useState<Record<string, number>>({});
   const [pending, startTransition] = useTransition();
@@ -517,7 +567,14 @@ export function BuyTicketsPanel({ eventId, types, memberPriceAvailable }: { even
               </p>
             </div>
             <div className="flex items-center gap-1">
-              <Button type="button" variant="outline" size="icon-sm" aria-label={`One fewer ${t.name}`} disabled={!n} onClick={() => setQty((q) => ({ ...q, [t.id]: n - 1 }))}>
+              <Button
+                type="button"
+                variant="outline"
+                size="icon-sm"
+                aria-label={`One fewer ${t.name}`}
+                disabled={!n}
+                onClick={() => setQty((q) => ({ ...q, [t.id]: n - 1 }))}
+              >
                 <MinusIcon />
               </Button>
               <span className="w-6 text-center tabular-nums" aria-live="polite">
@@ -537,13 +594,20 @@ export function BuyTicketsPanel({ eventId, types, memberPriceAvailable }: { even
           </div>
         );
       })}
-      {memberPriceAvailable && <p className="text-muted-foreground text-xs">Member price applies to one ticket — yours. Extra tickets are at the non-member price.</p>}
+      {memberPriceAvailable && (
+        <p className="text-muted-foreground text-xs">
+          Member price applies to one ticket — yours. Extra tickets are at the non-member price.
+        </p>
+      )}
       <Button
         size="lg"
         disabled={!count || pending}
         onClick={() =>
           startTransition(async () => {
-            const res = await buyTickets({ eventId, lines: Object.entries(qty).map(([ticketTypeId, quantity]) => ({ ticketTypeId, quantity })) });
+            const res = await buyTickets({
+              eventId,
+              lines: Object.entries(qty).map(([ticketTypeId, quantity]) => ({ ticketTypeId, quantity })),
+            });
             if (!res.ok) return void toast.error(res.error);
             toast.success(res.message);
             setQty({});
@@ -687,4 +751,3 @@ export function ResolveIncidentButton({ incidentId }: { incidentId: string }) {
     </Dialog>
   );
 }
-

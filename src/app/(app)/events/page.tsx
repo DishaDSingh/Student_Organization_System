@@ -74,7 +74,9 @@ export default async function EventsPage(props: PageProps<"/events">) {
     <>
       <PageHeader
         title="Events"
-        description={staff ? "Plan events, sell tickets and run the door." : "What's coming up. Members get member pricing on their own ticket."}
+        description={
+          staff ? "Plan events, sell tickets and run the door." : "What's coming up. Members get member pricing on their own ticket."
+        }
         actions={
           can(user, "events.create") && (
             <Button asChild>
@@ -94,7 +96,9 @@ export default async function EventsPage(props: PageProps<"/events">) {
             aria-current={tab === t.key ? "page" : undefined}
             className={cn(
               "-mb-px border-b-2 px-3 py-2 text-sm",
-              tab === t.key ? "border-primary text-foreground font-medium" : "text-muted-foreground hover:text-foreground border-transparent",
+              tab === t.key
+                ? "border-primary text-foreground font-medium"
+                : "text-muted-foreground hover:text-foreground border-transparent",
             )}
           >
             {t.label}
@@ -130,12 +134,16 @@ export default async function EventsPage(props: PageProps<"/events">) {
                           {e.allocated}/{e.capacity} sold
                         </p>
                         <Meter value={e.allocated} max={e.capacity} className="mt-1" />
-                        {seeMoney && revenue[e.id] !== undefined && <p className="text-muted-foreground mt-1 tabular-nums">{formatINR(revenue[e.id])}</p>}
+                        {seeMoney && revenue[e.id] !== undefined && (
+                          <p className="text-muted-foreground mt-1 tabular-nums">{formatINR(revenue[e.id])}</p>
+                        )}
                       </>
                     ) : (
                       <>
                         <SalesBadge state={salesState(e, now)} />
-                        {Number.isFinite(from) && <p className="text-muted-foreground mt-0.5">{from ? `from ${formatINR(from)}` : "Free"}</p>}
+                        {Number.isFinite(from) && (
+                          <p className="text-muted-foreground mt-0.5">{from ? `from ${formatINR(from)}` : "Free"}</p>
+                        )}
                       </>
                     )}
                   </div>

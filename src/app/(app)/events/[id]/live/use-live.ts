@@ -15,7 +15,14 @@ export type LiveSnapshot = {
     byType: { id: string; name: string; quantity: number; allocated: number; checkedIn: number }[];
   };
   recent: { id: string; holderName: string; checkedInAt: string; ticketType: { name: string }; checkedInBy: { name: string } | null }[];
-  incidents: { id: string; title: string; severity: "LOW" | "MEDIUM" | "HIGH"; location: string | null; createdAt: string; resolvedAt: string | null }[];
+  incidents: {
+    id: string;
+    title: string;
+    severity: "LOW" | "MEDIUM" | "HIGH";
+    location: string | null;
+    createdAt: string;
+    resolvedAt: string | null;
+  }[];
   arrivals: { t: string; n: number }[];
 };
 

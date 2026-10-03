@@ -12,7 +12,10 @@ export const metadata: Metadata = { title: "Command center" };
 export default async function CommandCenterPage(props: PageProps<"/events/[id]/live">) {
   const user = await requirePermission("events.view");
   const { id } = await props.params;
-  const e = await db.event.findUnique({ where: { id }, select: { id: true, title: true, venue: true, status: true, startsAt: true, endsAt: true, capacity: true } });
+  const e = await db.event.findUnique({
+    where: { id },
+    select: { id: true, title: true, venue: true, status: true, startsAt: true, endsAt: true, capacity: true },
+  });
   if (!e) notFound();
 
   return (

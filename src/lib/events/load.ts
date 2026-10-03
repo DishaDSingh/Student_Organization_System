@@ -18,7 +18,13 @@ export async function eventStats(eventId: string) {
     db.ticketType.findMany({
       where: { eventId },
       orderBy: { sortOrder: "asc" },
-      select: { id: true, name: true, quantity: true, allocated: true, _count: { select: { tickets: { where: { status: "VALID", checkedInAt: { not: null } } } } } },
+      select: {
+        id: true,
+        name: true,
+        quantity: true,
+        allocated: true,
+        _count: { select: { tickets: { where: { status: "VALID", checkedInAt: { not: null } } } } },
+      },
     }),
     db.eventIncident.count({ where: { eventId, resolvedAt: null } }),
   ]);

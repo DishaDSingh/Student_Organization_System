@@ -48,8 +48,17 @@ export function CommandCenter({ eventId, capacity, canCheckIn }: { eventId: stri
   const tiles = [
     { label: "Tickets sold", value: s ? `${s.sold}` : "—", sub: s ? `${capacity - s.sold - s.reserved} seats left` : "" },
     { label: "Inside now", value: s ? `${s.checkedIn}` : "—", sub: s ? `${s.sold - s.checkedIn} yet to arrive` : "" },
-    { label: "Revenue", value: s?.revenuePaise != null ? formatINR(s.revenuePaise) : "—", sub: s ? `${s.pendingOrders} unpaid orders` : "" },
-    { label: "Open incidents", value: s ? `${s.incidentsOpen}` : "—", sub: s?.incidentsOpen ? "needs attention" : "all clear", alert: !!s?.incidentsOpen },
+    {
+      label: "Revenue",
+      value: s?.revenuePaise != null ? formatINR(s.revenuePaise) : "—",
+      sub: s ? `${s.pendingOrders} unpaid orders` : "",
+    },
+    {
+      label: "Open incidents",
+      value: s ? `${s.incidentsOpen}` : "—",
+      sub: s?.incidentsOpen ? "needs attention" : "all clear",
+      alert: !!s?.incidentsOpen,
+    },
   ];
 
   return (
@@ -130,7 +139,13 @@ export function CommandCenter({ eventId, capacity, canCheckIn }: { eventId: stri
                     <span
                       className={cn(
                         "mt-1.5 size-2 shrink-0 rounded-full",
-                        i.resolvedAt ? "bg-muted-foreground/40" : i.severity === "HIGH" ? "bg-destructive" : i.severity === "MEDIUM" ? "bg-warning" : "bg-info",
+                        i.resolvedAt
+                          ? "bg-muted-foreground/40"
+                          : i.severity === "HIGH"
+                            ? "bg-destructive"
+                            : i.severity === "MEDIUM"
+                              ? "bg-warning"
+                              : "bg-info",
                       )}
                     />
                     <span className="min-w-0">

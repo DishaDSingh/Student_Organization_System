@@ -39,9 +39,13 @@ export default async function MyTicketsPage() {
   // Pre-render QR codes server-side (only for upcoming, paid tickets and pending payments).
   const qr = new Map<string, string>();
   for (const o of upcoming) {
-    if (o.status === "PAID") for (const t of o.tickets.filter((t) => t.status === "VALID")) qr.set(t.id, await qrSvg(`${origin}/t/${t.code}`));
+    if (o.status === "PAID")
+      for (const t of o.tickets.filter((t) => t.status === "VALID")) qr.set(t.id, await qrSvg(`${origin}/t/${t.code}`));
     if (o.status === "PENDING_PAYMENT" && org?.upiId)
-      qr.set(o.id, await qrSvg(upiUri({ upiId: org.upiId, payee: org.name, amountPaise: o.totalPaise, note: `${org.shortName} ${o.orderNumber}` })));
+      qr.set(
+        o.id,
+        await qrSvg(upiUri({ upiId: org.upiId, payee: org.name, amountPaise: o.totalPaise, note: `${org.shortName} ${o.orderNumber}` })),
+      );
   }
 
   return (
@@ -77,7 +81,10 @@ export default async function MyTicketsPage() {
               </div>
 
               {o.status === "PENDING_PAYMENT" ? (
-                <Section title={`Pay ${formatINR(o.totalPaise)} to confirm`} description={`Seats are held for ${HOLD_HOURS} hours. Pay by UPI or at the council desk.`}>
+                <Section
+                  title={`Pay ${formatINR(o.totalPaise)} to confirm`}
+                  description={`Seats are held for ${HOLD_HOURS} hours. Pay by UPI or at the council desk.`}
+                >
                   <div className="grid gap-4 sm:grid-cols-[10rem_1fr]">
                     {qr.get(o.id) ? <QrImage svg={qr.get(o.id)!} label={`UPI payment QR for ${formatINR(o.totalPaise)}`} /> : null}
                     <div className="text-muted-foreground grid content-start gap-2 text-sm">
@@ -118,7 +125,9 @@ export default async function MyTicketsPage() {
                             {t.checkedInAt ? `Checked in ${fmtDateTime(t.checkedInAt)}` : `Ticket ${t.status.toLowerCase()}`}
                           </p>
                         )}
-                        {!t.holderName.startsWith("Guest of") ? null : <p className="text-muted-foreground mt-2 text-center text-xs">Forward this QR to your guest</p>}
+                        {!t.holderName.startsWith("Guest of") ? null : (
+                          <p className="text-muted-foreground mt-2 text-center text-xs">Forward this QR to your guest</p>
+                        )}
                       </div>
                     </li>
                   ))}

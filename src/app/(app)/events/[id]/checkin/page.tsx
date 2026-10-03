@@ -12,7 +12,10 @@ export const metadata: Metadata = { title: "Door check-in" };
 export default async function CheckInPage(props: PageProps<"/events/[id]/checkin">) {
   await requirePermission("tickets.checkin");
   const { id } = await props.params;
-  const e = await db.event.findUnique({ where: { id }, select: { id: true, title: true, status: true, startsAt: true, endsAt: true, capacity: true } });
+  const e = await db.event.findUnique({
+    where: { id },
+    select: { id: true, title: true, status: true, startsAt: true, endsAt: true, capacity: true },
+  });
   if (!e) notFound();
   const open = canCheckIn(e);
 

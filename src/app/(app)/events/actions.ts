@@ -45,29 +45,61 @@ export const saveEvent = guardedAction({ permission: ["events.create", "events.e
     committeeId: rest.committeeId ?? null,
   };
 
-  const id = await db.$transaction(async (tx) => {
-    if (eventId) {
-      const before = await tx.event.findUniqueOrThrow({
-        where: { id: eventId },
-        select: { title: true, description: true, category: true, venue: true, startsAt: true, endsAt: true, capacity: true, allocated: true, salesOpenAt: true, salesCloseAt: true, organizerId: true, committeeId: true, status: true },
+  const id = await db
+    .$transaction(async (tx) => {
+      if (eventId) {
+        const before = await tx.event.findUniqueOrThrow({
+          where: { id: eventId },
+          select: {
+            title: true,
+            description: true,
+            category: true,
+            venue: true,
+            startsAt: true,
+            endsAt: true,
+            capacity: true,
+            allocated: true,
+            salesOpenAt: true,
+            salesCloseAt: true,
+            organizerId: true,
+            committeeId: true,
+            status: true,
+          },
+        });
+        if (before.status === "CANCELLED") throw new Error("CANCELLED");
+        if (data.capacity < before.allocated) throw new Error(`CAPACITY:${before.allocated}`);
+        const { allocated: _a, status: _s, ...fields } = before;
+        const changes = diff(fields, data);
+        if (!changes.changed) return eventId;
+        await tx.event.update({ where: { id: eventId }, data });
+        await audit(tx, {
+          actor,
+          action: "event.update",
+          entityType: "Event",
+          entityId: eventId,
+          summary: `Updated event "${data.title}" (${Object.keys(changes.after).join(", ")})`,
+          before: changes.before,
+          after: changes.after,
+        });
+        return eventId;
+      }
+      const e = await tx.event.create({ data: { ...data, createdById: actor.id, organizerId: data.organizerId ?? actor.id } });
+      await audit(tx, {
+        actor,
+        action: "event.create",
+        entityType: "Event",
+        entityId: e.id,
+        summary: `Created draft event "${e.title}" on ${fmtDateTime(e.startsAt)}`,
+        after: data,
       });
-      if (before.status === "CANCELLED") throw new Error("CANCELLED");
-      if (data.capacity < before.allocated) throw new Error(`CAPACITY:${before.allocated}`);
-      const { allocated: _a, status: _s, ...fields } = before;
-      const changes = diff(fields, data);
-      if (!changes.changed) return eventId;
-      await tx.event.update({ where: { id: eventId }, data });
-      await audit(tx, { actor, action: "event.update", entityType: "Event", entityId: eventId, summary: `Updated event "${data.title}" (${Object.keys(changes.after).join(", ")})`, before: changes.before, after: changes.after });
-      return eventId;
-    }
-    const e = await tx.event.create({ data: { ...data, createdById: actor.id, organizerId: data.organizerId ?? actor.id } });
-    await audit(tx, { actor, action: "event.create", entityType: "Event", entityId: e.id, summary: `Created draft event "${e.title}" on ${fmtDateTime(e.startsAt)}`, after: data });
-    return e.id;
-  }).catch((e: Error) => {
-    if (e.message === "CANCELLED") return { error: "Cancelled events can't be edited." };
-    if (e.message.startsWith("CAPACITY:")) return { error: `Capacity can't go below the ${e.message.slice(9)} tickets already sold or held.` };
-    throw e;
-  });
+      return e.id;
+    })
+    .catch((e: Error) => {
+      if (e.message === "CANCELLED") return { error: "Cancelled events can't be edited." };
+      if (e.message.startsWith("CAPACITY:"))
+        return { error: `Capacity can't go below the ${e.message.slice(9)} tickets already sold or held.` };
+      throw e;
+    });
   if (typeof id !== "string") return fail(id.error, id.error.startsWith("Capacity") ? { capacity: ["Too low"] } : undefined);
 
   refresh(id);
@@ -75,14 +107,23 @@ export const saveEvent = guardedAction({ permission: ["events.create", "events.e
 });
 
 export const publishEvent = guardedAction({ permission: "events.publish", schema: eventIdSchema }, async ({ eventId }, actor) => {
-  const e = await db.event.findUnique({ where: { id: eventId }, select: { title: true, status: true, endsAt: true, _count: { select: { ticketTypes: { where: { isActive: true } } } } } });
+  const e = await db.event.findUnique({
+    where: { id: eventId },
+    select: { title: true, status: true, endsAt: true, _count: { select: { ticketTypes: { where: { isActive: true } } } } },
+  });
   if (!e) return fail("Event not found.");
   if (e.status !== "DRAFT") return fail("Only drafts can be published.");
   if (e.endsAt < new Date()) return fail("This event is in the past.");
   if (!e._count.ticketTypes) return fail("Add at least one ticket type before publishing.");
   await db.$transaction(async (tx) => {
     await tx.event.update({ where: { id: eventId }, data: { status: "PUBLISHED", publishedAt: new Date() } });
-    await audit(tx, { actor, action: "event.publish", entityType: "Event", entityId: eventId, summary: `Published "${e.title}" — tickets are on sale` });
+    await audit(tx, {
+      actor,
+      action: "event.publish",
+      entityType: "Event",
+      entityId: eventId,
+      summary: `Published "${e.title}" — tickets are on sale`,
+    });
   });
   refresh(eventId);
   return ok(undefined, "Published — tickets are on sale");
@@ -127,23 +168,56 @@ export const cancelEvent = guardedAction({ permission: "events.cancel", schema: 
 
 export const saveTicketType = guardedAction({ permission: "tickets.manage", schema: ticketTypeSchema }, async (input, actor) => {
   const { ticketTypeId, eventId, memberPriceRupees, publicPriceRupees, ...rest } = input;
-  const data = { ...rest, description: rest.description ?? null, memberPricePaise: rupeesToPaise(memberPriceRupees), publicPricePaise: rupeesToPaise(publicPriceRupees) };
+  const data = {
+    ...rest,
+    description: rest.description ?? null,
+    memberPricePaise: rupeesToPaise(memberPriceRupees),
+    publicPricePaise: rupeesToPaise(publicPriceRupees),
+  };
   const event = await db.event.findUnique({ where: { id: eventId }, select: { title: true, status: true } });
   if (!event || event.status === "CANCELLED") return fail("Event not found or cancelled.");
 
   const res = await db.$transaction(async (tx) => {
     if (ticketTypeId) {
-      const before = await tx.ticketType.findUniqueOrThrow({ where: { id: ticketTypeId }, select: { name: true, description: true, memberPricePaise: true, publicPricePaise: true, quantity: true, allocated: true, maxPerOrder: true, membersOnly: true, isActive: true } });
+      const before = await tx.ticketType.findUniqueOrThrow({
+        where: { id: ticketTypeId },
+        select: {
+          name: true,
+          description: true,
+          memberPricePaise: true,
+          publicPricePaise: true,
+          quantity: true,
+          allocated: true,
+          maxPerOrder: true,
+          membersOnly: true,
+          isActive: true,
+        },
+      });
       if (data.quantity < before.allocated) return `Quantity can't go below the ${before.allocated} already sold or held.`;
       const { allocated: _a, ...fields } = before;
       const changes = diff(fields, data);
       if (!changes.changed) return null;
       await tx.ticketType.update({ where: { id: ticketTypeId }, data });
-      await audit(tx, { actor, action: "ticket_type.update", entityType: "Event", entityId: eventId, summary: `Updated "${data.name}" tickets for ${event.title}`, before: changes.before, after: changes.after });
+      await audit(tx, {
+        actor,
+        action: "ticket_type.update",
+        entityType: "Event",
+        entityId: eventId,
+        summary: `Updated "${data.name}" tickets for ${event.title}`,
+        before: changes.before,
+        after: changes.after,
+      });
     } else {
       const sortOrder = await tx.ticketType.count({ where: { eventId } });
       await tx.ticketType.create({ data: { ...data, eventId, sortOrder } });
-      await audit(tx, { actor, action: "ticket_type.create", entityType: "Event", entityId: eventId, summary: `Added "${data.name}" tickets (${data.quantity} at ${formatINR(data.memberPricePaise)} member / ${formatINR(data.publicPricePaise)} public) to ${event.title}`, after: data });
+      await audit(tx, {
+        actor,
+        action: "ticket_type.create",
+        entityType: "Event",
+        entityId: eventId,
+        summary: `Added "${data.name}" tickets (${data.quantity} at ${formatINR(data.memberPricePaise)} member / ${formatINR(data.publicPricePaise)} public) to ${event.title}`,
+        after: data,
+      });
     }
     return null;
   });
@@ -180,7 +254,8 @@ async function createOrder(opts: {
   const sales = salesState(event);
   // Door sales continue during the event; online sales follow the sales window.
   if (opts.channel === "ONLINE" && sales !== "OPEN") return fail(sales === "SOLD_OUT" ? "Sold out." : "Tickets aren't on sale right now.");
-  if (opts.channel === "DOOR" && (event.status !== "PUBLISHED" || eventPhase(event) === "ENDED")) return fail("This event isn't taking door sales.");
+  if (opts.channel === "DOOR" && (event.status !== "PUBLISHED" || eventPhase(event) === "ENDED"))
+    return fail("This event isn't taking door sales.");
 
   const types = new Map(event.ticketTypes.map((t) => [t.id, t]));
   for (const l of opts.lines) {
@@ -190,7 +265,10 @@ async function createOrder(opts: {
   }
 
   const ctx = opts.buyer.id ? await memberContext(opts.buyer.id, event.id) : { isActiveMember: false, memberTicketAlreadyUsed: false };
-  const priced = priceOrder(opts.lines.map((l) => ({ type: types.get(l.ticketTypeId)!, quantity: l.quantity })), ctx);
+  const priced = priceOrder(
+    opts.lines.map((l) => ({ type: types.get(l.ticketTypeId)!, quantity: l.quantity })),
+    ctx,
+  );
   if (!priced.ok) return fail(priced.error);
 
   try {
@@ -228,7 +306,12 @@ async function createOrder(opts: {
           : null;
       return { order, settled };
     });
-    return ok({ orderId: order.order.id, orderNumber: order.order.orderNumber, totalPaise: priced.totalPaise, status: order.settled ? "PAID" : "PENDING_PAYMENT" });
+    return ok({
+      orderId: order.order.id,
+      orderNumber: order.order.orderNumber,
+      totalPaise: priced.totalPaise,
+      status: order.settled ? "PAID" : "PENDING_PAYMENT",
+    });
   } catch (e) {
     if (e instanceof SoldOutError) return fail(e.message);
     throw e;
@@ -268,7 +351,10 @@ export const doorSale = guardedAction({ permission: "tickets.sell", schema: door
   // Record the real payment method on the receipt (createOrder settles door sales as cash by default).
   await db.$transaction(async (tx) => {
     if (res.data.totalPaise > 0) {
-      await tx.payment.update({ where: { ticketOrderId: res.data.orderId }, data: { method: input.method, reference: input.reference ?? null } });
+      await tx.payment.update({
+        where: { ticketOrderId: res.data.orderId },
+        data: { method: input.method, reference: input.reference ?? null },
+      });
     }
     await audit(tx, {
       actor,
@@ -282,61 +368,96 @@ export const doorSale = guardedAction({ permission: "tickets.sell", schema: door
   return ok(res.data, `Sold — ${res.data.orderNumber}, ${formatINR(res.data.totalPaise)}`);
 });
 
-export const confirmOrder = guardedAction({ permission: ["tickets.sell", "finance.record_income"], schema: confirmOrderSchema }, async (input, actor) => {
-  const order = await db.ticketOrder.findUnique({ where: { id: input.orderId }, select: { status: true, eventId: true, buyerId: true, buyerName: true, totalPaise: true, orderNumber: true, event: { select: { title: true } } } });
-  if (!order) return fail("Order not found.");
-  if (order.status !== "PENDING_PAYMENT") return fail("This order isn't awaiting payment.");
-  const res = await db.$transaction(async (tx) => {
-    const s = await settleOrder(tx, { orderId: input.orderId, method: input.method, reference: input.reference, receivedById: actor.id });
-    await audit(tx, {
-      actor,
-      action: "ticket.order.confirm",
-      entityType: "Event",
-      entityId: order.eventId,
-      summary: `Confirmed ${formatINR(order.totalPaise)} from ${order.buyerName} for ${order.orderNumber} (${PAYMENT_METHOD_LABEL[input.method]}, receipt ${s.payment?.receiptNumber ?? "—"})`,
+export const confirmOrder = guardedAction(
+  { permission: ["tickets.sell", "finance.record_income"], schema: confirmOrderSchema },
+  async (input, actor) => {
+    const order = await db.ticketOrder.findUnique({
+      where: { id: input.orderId },
+      select: {
+        status: true,
+        eventId: true,
+        buyerId: true,
+        buyerName: true,
+        totalPaise: true,
+        orderNumber: true,
+        event: { select: { title: true } },
+      },
     });
-    if (order.buyerId) {
-      await tx.notification.create({
-        data: { userId: order.buyerId, type: "ticket.confirmed", title: "Tickets confirmed", body: `Your tickets for ${order.event.title} are confirmed. Show the QR at the door.`, link: "/me/tickets" },
+    if (!order) return fail("Order not found.");
+    if (order.status !== "PENDING_PAYMENT") return fail("This order isn't awaiting payment.");
+    const res = await db.$transaction(async (tx) => {
+      const s = await settleOrder(tx, { orderId: input.orderId, method: input.method, reference: input.reference, receivedById: actor.id });
+      await audit(tx, {
+        actor,
+        action: "ticket.order.confirm",
+        entityType: "Event",
+        entityId: order.eventId,
+        summary: `Confirmed ${formatINR(order.totalPaise)} from ${order.buyerName} for ${order.orderNumber} (${PAYMENT_METHOD_LABEL[input.method]}, receipt ${s.payment?.receiptNumber ?? "—"})`,
       });
-    }
-    return s;
-  });
-  refresh(order.eventId);
-  return ok(undefined, `Confirmed — receipt ${res.payment?.receiptNumber ?? "(free)"}`);
-});
-
-export const voidTicketOrder = guardedAction({ permission: ["tickets.sell", "tickets.refund"], schema: voidOrderSchema }, async ({ orderId, reason }, actor) => {
-  const order = await db.ticketOrder.findUnique({ where: { id: orderId }, select: { status: true, eventId: true, buyerName: true, totalPaise: true, orderNumber: true, buyerId: true } });
-  if (!order) return fail("Order not found.");
-  const to = order.status === "PAID" ? "REFUNDED" : "CANCELLED";
-  if (order.status !== "PAID" && order.status !== "PENDING_PAYMENT") return fail("This order is already closed.");
-  if (to === "REFUNDED" && !actor.permissions.has("tickets.refund")) return fail("Refunds need the Refund permission.");
-
-  const { released } = await db.$transaction(async (tx) => {
-    const r = await voidOrder(tx, orderId, to);
-    await audit(tx, {
-      actor,
-      action: to === "REFUNDED" ? "ticket.refund" : "ticket.order.cancel",
-      entityType: "Event",
-      entityId: order.eventId,
-      summary: `${to === "REFUNDED" ? `Refunded ${formatINR(order.totalPaise)} to` : "Cancelled unpaid order for"} ${order.buyerName} (${order.orderNumber}) — ${reason}`,
-      before: { status: order.status },
-      after: { status: to, reason },
+      if (order.buyerId) {
+        await tx.notification.create({
+          data: {
+            userId: order.buyerId,
+            type: "ticket.confirmed",
+            title: "Tickets confirmed",
+            body: `Your tickets for ${order.event.title} are confirmed. Show the QR at the door.`,
+            link: "/me/tickets",
+          },
+        });
+      }
+      return s;
     });
-    return r;
-  });
-  refresh(order.eventId);
-  return ok(undefined, `${to === "REFUNDED" ? "Refunded" : "Cancelled"} — ${released} seat(s) released`);
-});
+    refresh(order.eventId);
+    return ok(undefined, `Confirmed — receipt ${res.payment?.receiptNumber ?? "(free)"}`);
+  },
+);
+
+export const voidTicketOrder = guardedAction(
+  { permission: ["tickets.sell", "tickets.refund"], schema: voidOrderSchema },
+  async ({ orderId, reason }, actor) => {
+    const order = await db.ticketOrder.findUnique({
+      where: { id: orderId },
+      select: { status: true, eventId: true, buyerName: true, totalPaise: true, orderNumber: true, buyerId: true },
+    });
+    if (!order) return fail("Order not found.");
+    const to = order.status === "PAID" ? "REFUNDED" : "CANCELLED";
+    if (order.status !== "PAID" && order.status !== "PENDING_PAYMENT") return fail("This order is already closed.");
+    if (to === "REFUNDED" && !actor.permissions.has("tickets.refund")) return fail("Refunds need the Refund permission.");
+
+    const { released } = await db.$transaction(async (tx) => {
+      const r = await voidOrder(tx, orderId, to);
+      await audit(tx, {
+        actor,
+        action: to === "REFUNDED" ? "ticket.refund" : "ticket.order.cancel",
+        entityType: "Event",
+        entityId: order.eventId,
+        summary: `${to === "REFUNDED" ? `Refunded ${formatINR(order.totalPaise)} to` : "Cancelled unpaid order for"} ${order.buyerName} (${order.orderNumber}) — ${reason}`,
+        before: { status: order.status },
+        after: { status: to, reason },
+      });
+      return r;
+    });
+    refresh(order.eventId);
+    return ok(undefined, `${to === "REFUNDED" ? "Refunded" : "Cancelled"} — ${released} seat(s) released`);
+  },
+);
 
 export const cancelMyOrder = guardedAction({ schema: voidOrderSchema.pick({ orderId: true }) }, async ({ orderId }, actor) => {
-  const order = await db.ticketOrder.findUnique({ where: { id: orderId }, select: { buyerId: true, status: true, eventId: true, orderNumber: true } });
+  const order = await db.ticketOrder.findUnique({
+    where: { id: orderId },
+    select: { buyerId: true, status: true, eventId: true, orderNumber: true },
+  });
   if (!order || order.buyerId !== actor.id) return fail("Order not found.");
   if (order.status !== "PENDING_PAYMENT") return fail("Only unpaid orders can be cancelled here. Ask the treasurer about refunds.");
   await db.$transaction(async (tx) => {
     await voidOrder(tx, orderId, "CANCELLED");
-    await audit(tx, { actor, action: "ticket.order.cancel", entityType: "Event", entityId: order.eventId, summary: `${actor.name} cancelled their unpaid order ${order.orderNumber}` });
+    await audit(tx, {
+      actor,
+      action: "ticket.order.cancel",
+      entityType: "Event",
+      entityId: order.eventId,
+      summary: `${actor.name} cancelled their unpaid order ${order.orderNumber}`,
+    });
   });
   revalidatePath("/me/tickets");
   refresh(order.eventId);
@@ -369,36 +490,68 @@ export const checkInTicket = guardedAction({ permission: "tickets.checkin", sche
   const base = { holderName: t.holderName, eventTitle: t.event.title };
   if (t.status === "RESERVED") return ok<CheckInResult>({ result: "REJECTED", reason: "Unpaid — send them to the desk to pay.", ...base });
   if (t.status !== "VALID") return ok<CheckInResult>({ result: "REJECTED", reason: `Ticket was ${t.status.toLowerCase()}.`, ...base });
-  if (!canCheckIn(t.event)) return ok<CheckInResult>({ result: "REJECTED", reason: "Check-in isn't open for this event right now.", ...base });
+  if (!canCheckIn(t.event))
+    return ok<CheckInResult>({ result: "REJECTED", reason: "Check-in isn't open for this event right now.", ...base });
   if (t.checkedInAt) {
-    return ok<CheckInResult>({ result: "ALREADY_IN", ticketType: t.ticketType.name, at: t.checkedInAt.toISOString(), by: t.checkedInBy?.name ?? null, ...base });
+    return ok<CheckInResult>({
+      result: "ALREADY_IN",
+      ticketType: t.ticketType.name,
+      at: t.checkedInAt.toISOString(),
+      by: t.checkedInBy?.name ?? null,
+      ...base,
+    });
   }
 
   // Conditional update: if two volunteers scan the same ticket at once, only one admits it.
-  const updated = await db.ticket.updateMany({ where: { id: t.id, checkedInAt: null }, data: { checkedInAt: new Date(), checkedInById: actor.id } });
-  if (updated.count === 0) return ok<CheckInResult>({ result: "ALREADY_IN", ticketType: t.ticketType.name, at: new Date().toISOString(), by: null, ...base });
+  const updated = await db.ticket.updateMany({
+    where: { id: t.id, checkedInAt: null },
+    data: { checkedInAt: new Date(), checkedInById: actor.id },
+  });
+  if (updated.count === 0)
+    return ok<CheckInResult>({ result: "ALREADY_IN", ticketType: t.ticketType.name, at: new Date().toISOString(), by: null, ...base });
   return ok<CheckInResult>({ result: "ADMITTED", ticketType: t.ticketType.name, isMemberPrice: t.isMemberPrice, ...base });
 });
 
-export const reportIncident = guardedAction({ permission: ["events.edit", "tickets.checkin", "cctv.view"], schema: incidentSchema }, async (input, actor) => {
-  const e = await db.event.findUnique({ where: { id: input.eventId }, select: { title: true } });
-  if (!e) return fail("Event not found.");
-  await db.$transaction(async (tx) => {
-    const i = await tx.eventIncident.create({ data: { ...input, details: input.details ?? null, location: input.location ?? null, reportedById: actor.id } });
-    await audit(tx, { actor, action: "incident.report", entityType: "Event", entityId: input.eventId, summary: `Reported ${input.severity.toLowerCase()} incident at ${e.title}: ${input.title}`, after: { incidentId: i.id } });
-  });
-  refresh(input.eventId);
-  return ok(undefined, "Incident logged");
-});
+export const reportIncident = guardedAction(
+  { permission: ["events.edit", "tickets.checkin", "cctv.view"], schema: incidentSchema },
+  async (input, actor) => {
+    const e = await db.event.findUnique({ where: { id: input.eventId }, select: { title: true } });
+    if (!e) return fail("Event not found.");
+    await db.$transaction(async (tx) => {
+      const i = await tx.eventIncident.create({
+        data: { ...input, details: input.details ?? null, location: input.location ?? null, reportedById: actor.id },
+      });
+      await audit(tx, {
+        actor,
+        action: "incident.report",
+        entityType: "Event",
+        entityId: input.eventId,
+        summary: `Reported ${input.severity.toLowerCase()} incident at ${e.title}: ${input.title}`,
+        after: { incidentId: i.id },
+      });
+    });
+    refresh(input.eventId);
+    return ok(undefined, "Incident logged");
+  },
+);
 
-export const resolveIncident = guardedAction({ permission: ["events.edit", "cctv.view"], schema: resolveIncidentSchema }, async ({ incidentId, resolution }, actor) => {
-  const i = await db.eventIncident.findUnique({ where: { id: incidentId }, select: { eventId: true, title: true, resolvedAt: true } });
-  if (!i) return fail("Incident not found.");
-  if (i.resolvedAt) return ok(undefined);
-  await db.$transaction(async (tx) => {
-    await tx.eventIncident.update({ where: { id: incidentId }, data: { resolvedAt: new Date(), resolution } });
-    await audit(tx, { actor, action: "incident.resolve", entityType: "Event", entityId: i.eventId, summary: `Resolved incident "${i.title}" — ${resolution}` });
-  });
-  refresh(i.eventId);
-  return ok(undefined, "Marked resolved");
-});
+export const resolveIncident = guardedAction(
+  { permission: ["events.edit", "cctv.view"], schema: resolveIncidentSchema },
+  async ({ incidentId, resolution }, actor) => {
+    const i = await db.eventIncident.findUnique({ where: { id: incidentId }, select: { eventId: true, title: true, resolvedAt: true } });
+    if (!i) return fail("Incident not found.");
+    if (i.resolvedAt) return ok(undefined);
+    await db.$transaction(async (tx) => {
+      await tx.eventIncident.update({ where: { id: incidentId }, data: { resolvedAt: new Date(), resolution } });
+      await audit(tx, {
+        actor,
+        action: "incident.resolve",
+        entityType: "Event",
+        entityId: i.eventId,
+        summary: `Resolved incident "${i.title}" — ${resolution}`,
+      });
+    });
+    refresh(i.eventId);
+    return ok(undefined, "Marked resolved");
+  },
+);

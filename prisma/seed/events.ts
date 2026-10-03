@@ -35,7 +35,13 @@ type EventSpec = {
 const GALA_TYPES = (scale = 1): TypeSpec[] => [
   { name: "Early Bird", member: 499, pub: 799, qty: Math.round(150 * scale), description: "Entry + dinner. Limited." },
   { name: "General", member: 599, pub: 899, qty: Math.round(380 * scale), description: "Entry + dinner" },
-  { name: "VIP Table", member: 1299, pub: 1599, qty: Math.round(40 * scale), description: "Reserved table, welcome drink, front-row seating" },
+  {
+    name: "VIP Table",
+    member: 1299,
+    pub: 1599,
+    qty: Math.round(40 * scale),
+    description: "Reserved table, welcome drink, front-row seating",
+  },
 ];
 
 const BIG_EVENTS: EventSpec[] = [
@@ -132,36 +138,187 @@ const BIG_EVENTS: EventSpec[] = [
   },
 ];
 
-const VENUES = ["Seminar Hall A", "Seminar Hall B", "Lecture Theatre 3", "Open-Air Theatre", "Sports Complex", "Innovation Lab", "Library Auditorium", "Student Activity Centre", "Main Auditorium"];
-const SMALL_TEMPLATES: { title: string; category: string; cap: [number, number]; types: () => TypeSpec[]; attendance: number; description: string }[] = [
-  { title: "Resume & LinkedIn Clinic", category: "Workshop", cap: [60, 90], types: () => [{ name: "Seat", member: 0, pub: 100, qty: 90 }], attendance: 0.78, description: "Get your CV reviewed by alumni recruiters." },
-  { title: "Intro to Machine Learning", category: "Workshop", cap: [80, 120], types: () => [{ name: "Seat", member: 0, pub: 150, qty: 120 }], attendance: 0.74, description: "Hands-on with Python, scikit-learn and real datasets." },
-  { title: "Public Speaking Bootcamp", category: "Workshop", cap: [40, 60], types: () => [{ name: "Seat", member: 99, pub: 199, qty: 60 }], attendance: 0.8, description: "Two hours to beat stage fear." },
-  { title: "Startup Founders Panel", category: "Talk", cap: [120, 200], types: () => [{ name: "Free pass", member: 0, pub: 0, qty: 200 }], attendance: 0.62, description: "Alumni founders on building in India." },
-  { title: "Mental Health Matters", category: "Talk", cap: [100, 150], types: () => [{ name: "Free pass", member: 0, pub: 0, qty: 150 }], attendance: 0.6, description: "A candid conversation with campus counsellors." },
-  { title: "Tech Fest Hackathon", category: "Tech", cap: [150, 220], types: () => [{ name: "Participant", member: 0, pub: 150, qty: 200 }, { name: "Spectator", member: 0, pub: 0, qty: 40 }], attendance: 0.86, description: "24 hours, 40 teams, prizes worth ₹1.5 lakh." },
-  { title: "Robotics Expo", category: "Tech", cap: [150, 250], types: () => [{ name: "Entry", member: 0, pub: 50, qty: 250 }], attendance: 0.7, description: "Student-built robots, drones and live demos." },
-  { title: "Cultural Night: Rang", category: "Cultural", cap: [300, 450], types: () => [{ name: "General", member: 99, pub: 199, qty: 400 }, { name: "Front Rows", member: 199, pub: 299, qty: 50 }], attendance: 0.88, description: "Music, dance and drama from every corner of India." },
-  { title: "Garba Night", category: "Cultural", cap: [400, 500], types: () => [{ name: "Entry", member: 149, pub: 249, qty: 500 }], attendance: 0.9, description: "Dandiya sticks provided. Come dressed to twirl." },
-  { title: "Open Mic Night", category: "Cultural", cap: [80, 120], types: () => [{ name: "Entry", member: 0, pub: 50, qty: 120 }], attendance: 0.72, description: "Poetry, stand-up and acoustic sets." },
-  { title: "Inter-College Sports Meet", category: "Sports", cap: [300, 500], types: () => [{ name: "Spectator", member: 0, pub: 50, qty: 500 }], attendance: 0.66, description: "Football, basketball and athletics finals." },
-  { title: "Box Cricket League Finals", category: "Sports", cap: [100, 150], types: () => [{ name: "Spectator", member: 0, pub: 30, qty: 150 }], attendance: 0.7, description: "Department teams battle for the cup." },
-  { title: "Movie Night Under the Stars", category: "Social", cap: [150, 220], types: () => [{ name: "Entry", member: 49, pub: 99, qty: 220 }], attendance: 0.82, description: "Bean bags, popcorn and a classic on the big screen." },
-  { title: "Alumni Homecoming", category: "Social", cap: [200, 300], types: () => [{ name: "Alumni", member: 499, pub: 699, qty: 200 }, { name: "Student", member: 199, pub: 299, qty: 100 }], attendance: 0.85, description: "Reconnect with graduates across ten batches." },
-  { title: "Charity Bake Sale", category: "Fundraiser", cap: [100, 150], types: () => [{ name: "Tasting pass", member: 49, pub: 79, qty: 150 }], attendance: 0.75, description: "All proceeds to the Akshaya Patra mid-day meal programme." },
+const VENUES = [
+  "Seminar Hall A",
+  "Seminar Hall B",
+  "Lecture Theatre 3",
+  "Open-Air Theatre",
+  "Sports Complex",
+  "Innovation Lab",
+  "Library Auditorium",
+  "Student Activity Centre",
+  "Main Auditorium",
+];
+const SMALL_TEMPLATES: {
+  title: string;
+  category: string;
+  cap: [number, number];
+  types: () => TypeSpec[];
+  attendance: number;
+  description: string;
+}[] = [
+  {
+    title: "Resume & LinkedIn Clinic",
+    category: "Workshop",
+    cap: [60, 90],
+    types: () => [{ name: "Seat", member: 0, pub: 100, qty: 90 }],
+    attendance: 0.78,
+    description: "Get your CV reviewed by alumni recruiters.",
+  },
+  {
+    title: "Intro to Machine Learning",
+    category: "Workshop",
+    cap: [80, 120],
+    types: () => [{ name: "Seat", member: 0, pub: 150, qty: 120 }],
+    attendance: 0.74,
+    description: "Hands-on with Python, scikit-learn and real datasets.",
+  },
+  {
+    title: "Public Speaking Bootcamp",
+    category: "Workshop",
+    cap: [40, 60],
+    types: () => [{ name: "Seat", member: 99, pub: 199, qty: 60 }],
+    attendance: 0.8,
+    description: "Two hours to beat stage fear.",
+  },
+  {
+    title: "Startup Founders Panel",
+    category: "Talk",
+    cap: [120, 200],
+    types: () => [{ name: "Free pass", member: 0, pub: 0, qty: 200 }],
+    attendance: 0.62,
+    description: "Alumni founders on building in India.",
+  },
+  {
+    title: "Mental Health Matters",
+    category: "Talk",
+    cap: [100, 150],
+    types: () => [{ name: "Free pass", member: 0, pub: 0, qty: 150 }],
+    attendance: 0.6,
+    description: "A candid conversation with campus counsellors.",
+  },
+  {
+    title: "Tech Fest Hackathon",
+    category: "Tech",
+    cap: [150, 220],
+    types: () => [
+      { name: "Participant", member: 0, pub: 150, qty: 200 },
+      { name: "Spectator", member: 0, pub: 0, qty: 40 },
+    ],
+    attendance: 0.86,
+    description: "24 hours, 40 teams, prizes worth ₹1.5 lakh.",
+  },
+  {
+    title: "Robotics Expo",
+    category: "Tech",
+    cap: [150, 250],
+    types: () => [{ name: "Entry", member: 0, pub: 50, qty: 250 }],
+    attendance: 0.7,
+    description: "Student-built robots, drones and live demos.",
+  },
+  {
+    title: "Cultural Night: Rang",
+    category: "Cultural",
+    cap: [300, 450],
+    types: () => [
+      { name: "General", member: 99, pub: 199, qty: 400 },
+      { name: "Front Rows", member: 199, pub: 299, qty: 50 },
+    ],
+    attendance: 0.88,
+    description: "Music, dance and drama from every corner of India.",
+  },
+  {
+    title: "Garba Night",
+    category: "Cultural",
+    cap: [400, 500],
+    types: () => [{ name: "Entry", member: 149, pub: 249, qty: 500 }],
+    attendance: 0.9,
+    description: "Dandiya sticks provided. Come dressed to twirl.",
+  },
+  {
+    title: "Open Mic Night",
+    category: "Cultural",
+    cap: [80, 120],
+    types: () => [{ name: "Entry", member: 0, pub: 50, qty: 120 }],
+    attendance: 0.72,
+    description: "Poetry, stand-up and acoustic sets.",
+  },
+  {
+    title: "Inter-College Sports Meet",
+    category: "Sports",
+    cap: [300, 500],
+    types: () => [{ name: "Spectator", member: 0, pub: 50, qty: 500 }],
+    attendance: 0.66,
+    description: "Football, basketball and athletics finals.",
+  },
+  {
+    title: "Box Cricket League Finals",
+    category: "Sports",
+    cap: [100, 150],
+    types: () => [{ name: "Spectator", member: 0, pub: 30, qty: 150 }],
+    attendance: 0.7,
+    description: "Department teams battle for the cup.",
+  },
+  {
+    title: "Movie Night Under the Stars",
+    category: "Social",
+    cap: [150, 220],
+    types: () => [{ name: "Entry", member: 49, pub: 99, qty: 220 }],
+    attendance: 0.82,
+    description: "Bean bags, popcorn and a classic on the big screen.",
+  },
+  {
+    title: "Alumni Homecoming",
+    category: "Social",
+    cap: [200, 300],
+    types: () => [
+      { name: "Alumni", member: 499, pub: 699, qty: 200 },
+      { name: "Student", member: 199, pub: 299, qty: 100 },
+    ],
+    attendance: 0.85,
+    description: "Reconnect with graduates across ten batches.",
+  },
+  {
+    title: "Charity Bake Sale",
+    category: "Fundraiser",
+    cap: [100, 150],
+    types: () => [{ name: "Tasting pass", member: 49, pub: 79, qty: 150 }],
+    attendance: 0.75,
+    description: "All proceeds to the Akshaya Patra mid-day meal programme.",
+  },
 ];
 
 const INCIDENTS: { title: string; severity: "LOW" | "MEDIUM" | "HIGH"; location: string; resolution: string }[] = [
   { title: "Long queue at main entry", severity: "MEDIUM", location: "Gate A", resolution: "Opened a second scanning lane" },
   { title: "Sound system cut out for 4 minutes", severity: "MEDIUM", location: "Stage", resolution: "Swapped to backup mixer" },
   { title: "Lost wallet reported", severity: "LOW", location: "Lawns", resolution: "Found and returned to owner" },
-  { title: "Guest felt faint — first aid given", severity: "HIGH", location: "Dance floor", resolution: "Seen by campus nurse, recovered, sent home with a friend" },
+  {
+    title: "Guest felt faint — first aid given",
+    severity: "HIGH",
+    location: "Dance floor",
+    resolution: "Seen by campus nurse, recovered, sent home with a friend",
+  },
   { title: "Overcrowding near the stage", severity: "MEDIUM", location: "Front of stage", resolution: "Volunteers created a barrier line" },
-  { title: "Person without ticket tried to enter", severity: "LOW", location: "Gate B", resolution: "Directed to door sales; bought a ticket" },
+  {
+    title: "Person without ticket tried to enter",
+    severity: "LOW",
+    location: "Gate B",
+    resolution: "Directed to door sales; bought a ticket",
+  },
   { title: "Power fluctuation in hall", severity: "MEDIUM", location: "Hall", resolution: "Generator switched in by maintenance" },
-  { title: "Spilled drinks — slippery floor", severity: "LOW", location: "Food counter", resolution: "Housekeeping cleaned and placed signage" },
+  {
+    title: "Spilled drinks — slippery floor",
+    severity: "LOW",
+    location: "Food counter",
+    resolution: "Housekeeping cleaned and placed signage",
+  },
   { title: "Scanner phone battery died", severity: "LOW", location: "Gate A", resolution: "Switched to manual lookup; power bank arrived" },
-  { title: "Argument between two attendees", severity: "MEDIUM", location: "Parking", resolution: "Security separated them; no further issue" },
+  {
+    title: "Argument between two attendees",
+    severity: "MEDIUM",
+    location: "Parking",
+    resolution: "Security separated them; no further issue",
+  },
   { title: "Food ran out early at counter 2", severity: "LOW", location: "Food court", resolution: "Caterer sent extra trays in 15 min" },
   { title: "Projector failed during awards", severity: "MEDIUM", location: "Stage", resolution: "Moved slides to the LED wall" },
 ];
@@ -188,17 +345,37 @@ export async function seedEvents(db: Db) {
   const reporters = users.filter((u) => hasRole(u, "security_head", "event_head", "door_lead", "committee_member"));
   const committees = await db.committee.findMany({ select: { id: true, name: true } });
   const committeeFor = (title: string) =>
-    committees.find((c) => (title.includes("Gala") ? c.name.startsWith("Spring Gala Committee 2026") : title.includes("Tech") || title.includes("Hackathon") || title.includes("Robotics") ? c.name.startsWith("Tech Fest") : title.includes("Cultural") || title.includes("Garba") || title.includes("Open Mic") ? c.name.startsWith("Cultural") : title.includes("Sports") || title.includes("Cricket") ? c.name.startsWith("Sports") : title.includes("Alumni") ? c.name.startsWith("Alumni") : title.includes("Bake") || title.includes("Beach") ? c.name.startsWith("Fundraising") : false))?.id ?? null;
+    committees.find((c) =>
+      title.includes("Gala")
+        ? c.name.startsWith("Spring Gala Committee 2026")
+        : title.includes("Tech") || title.includes("Hackathon") || title.includes("Robotics")
+          ? c.name.startsWith("Tech Fest")
+          : title.includes("Cultural") || title.includes("Garba") || title.includes("Open Mic")
+            ? c.name.startsWith("Cultural")
+            : title.includes("Sports") || title.includes("Cricket")
+              ? c.name.startsWith("Sports")
+              : title.includes("Alumni")
+                ? c.name.startsWith("Alumni")
+                : title.includes("Bake") || title.includes("Beach")
+                  ? c.name.startsWith("Fundraising")
+                  : false,
+    )?.id ?? null;
 
   // Was a user an active member at time t? (for member pricing on historic orders)
-  const memberAt = (u: (typeof users)[number], t: Date) => u.memberships.some((m) => m.status === "ACTIVE" && m.startDate! <= t && m.endDate! >= t);
+  const memberAt = (u: (typeof users)[number], t: Date) =>
+    u.memberships.some((m) => m.status === "ACTIVE" && m.startDate! <= t && m.endDate! >= t);
   const buyers = users.filter((u) => u.status !== "SUSPENDED");
 
   // ── Event list: big story events + ~48 smaller ones spread over 18 months ──
   const specs: EventSpec[] = [...BIG_EVENTS];
   const smallOffsets = [
     ...Array.from({ length: bySize(22, 42) }, (_, i) => -540 + i * bySize(23, 12) + faker.number.int({ min: 0, max: 6 })),
-    5, 9, 12, 20, 45, 60,
+    5,
+    9,
+    12,
+    20,
+    45,
+    60,
   ];
   for (const [i, offset] of smallOffsets.entries()) {
     const t = SMALL_TEMPLATES[i % SMALL_TEMPLATES.length];
@@ -221,8 +398,25 @@ export async function seedEvents(db: Db) {
     });
   }
   // Drafts the events team is still planning.
-  for (const [title, offset] of [["Annual Sports Day 2027", 120], ["Spring Gala 2027", 160], ["Coding Bootcamp — Winter Edition", 75]] as const) {
-    specs.push({ title, category: title.includes("Gala") ? "Gala" : title.includes("Sports") ? "Sports" : "Workshop", venue: "TBD", dayOffset: offset, startHour: 18, hours: 4, capacity: title.includes("Gala") ? 700 : 150, fill: 0, attendance: 0, status: "DRAFT", types: title.includes("Gala") ? GALA_TYPES(1.15) : [{ name: "Seat", member: 0, pub: 200, qty: 150 }], description: "Planning in progress." });
+  for (const [title, offset] of [
+    ["Annual Sports Day 2027", 120],
+    ["Spring Gala 2027", 160],
+    ["Coding Bootcamp — Winter Edition", 75],
+  ] as const) {
+    specs.push({
+      title,
+      category: title.includes("Gala") ? "Gala" : title.includes("Sports") ? "Sports" : "Workshop",
+      venue: "TBD",
+      dayOffset: offset,
+      startHour: 18,
+      hours: 4,
+      capacity: title.includes("Gala") ? 700 : 150,
+      fill: 0,
+      attendance: 0,
+      status: "DRAFT",
+      types: title.includes("Gala") ? GALA_TYPES(1.15) : [{ name: "Seat", member: 0, pub: 200, qty: 150 }],
+      description: "Planning in progress.",
+    });
   }
 
   const eventRows: Prisma.EventCreateManyInput[] = [];
@@ -232,12 +426,16 @@ export async function seedEvents(db: Db) {
   const paymentRows: Omit<Prisma.PaymentCreateManyInput, "receiptNumber">[] = [];
   const incidentRows: Prisma.EventIncidentCreateManyInput[] = [];
   const auditRows: Prisma.AuditLogCreateManyInput[] = [];
-  let orderSeq = new Map<number, number>();
+  const orderSeq = new Map<number, number>();
 
   // Small datasets shrink every event's capacity so ticket volumes stay modest.
   const capScale = bySize(0.3, 1);
   for (const raw of specs) {
-    const spec = { ...raw, capacity: Math.max(20, Math.round(raw.capacity * capScale)), types: raw.types.map((t) => ({ ...t, qty: Math.max(10, Math.round(t.qty * capScale)) })) };
+    const spec = {
+      ...raw,
+      capacity: Math.max(20, Math.round(raw.capacity * capScale)),
+      types: raw.types.map((t) => ({ ...t, qty: Math.max(10, Math.round(t.qty * capScale)) })),
+    };
     const eventId = faker.string.uuid();
     const startsAt = at(spec.dayOffset, spec.startHour);
     const endsAt = new Date(startsAt.getTime() + spec.hours * 3600_000);
@@ -261,23 +459,57 @@ export async function seedEvents(db: Db) {
       createdById: organizer.id,
       committeeId: committeeFor(spec.title),
       cancelledReason: spec.cancelledReason ?? null,
-      publishedAt: status === "DRAFT" ? null : salesOpenAt ?? createdAt,
+      publishedAt: status === "DRAFT" ? null : (salesOpenAt ?? createdAt),
       createdAt,
     });
-    auditRows.push({ actorId: organizer.id, actorName: organizer.name, action: "event.create", entityType: "Event", entityId: eventId, summary: `Created draft event "${spec.title}"`, createdAt });
+    auditRows.push({
+      actorId: organizer.id,
+      actorName: organizer.name,
+      action: "event.create",
+      entityType: "Event",
+      entityId: eventId,
+      summary: `Created draft event "${spec.title}"`,
+      createdAt,
+    });
     if (status !== "DRAFT") {
-      auditRows.push({ actorId: organizer.id, actorName: organizer.name, action: "event.publish", entityType: "Event", entityId: eventId, summary: `Published "${spec.title}" — tickets are on sale`, createdAt: salesOpenAt ?? createdAt });
+      auditRows.push({
+        actorId: organizer.id,
+        actorName: organizer.name,
+        action: "event.publish",
+        entityType: "Event",
+        entityId: eventId,
+        summary: `Published "${spec.title}" — tickets are on sale`,
+        createdAt: salesOpenAt ?? createdAt,
+      });
     }
 
     const types = spec.types.map((t, i) => ({ ...t, id: faker.string.uuid(), sortOrder: i }));
     for (const t of types) {
-      typeRows.push({ id: t.id, eventId, name: t.name, description: t.description ?? null, memberPricePaise: t.member * 100, publicPricePaise: t.pub * 100, quantity: t.qty, membersOnly: !!t.membersOnly, sortOrder: t.sortOrder, maxPerOrder: t.membersOnly ? 1 : 4, createdAt });
+      typeRows.push({
+        id: t.id,
+        eventId,
+        name: t.name,
+        description: t.description ?? null,
+        memberPricePaise: t.member * 100,
+        publicPricePaise: t.pub * 100,
+        quantity: t.qty,
+        membersOnly: !!t.membersOnly,
+        sortOrder: t.sortOrder,
+        maxPerOrder: t.membersOnly ? 1 : 4,
+        createdAt,
+      });
     }
     if (status === "DRAFT") continue;
 
     // ── Sales: orders of 1–4 tickets until the fill target ──
-    const target = Math.min(Math.round(spec.capacity * spec.fill), types.reduce((s, t) => s + t.qty, 0));
-    const salesEnd = spec.status === "CANCELLED" ? new Date(Math.min(now.getTime(), startsAt.getTime())) : new Date(Math.min(now.getTime(), startsAt.getTime()));
+    const target = Math.min(
+      Math.round(spec.capacity * spec.fill),
+      types.reduce((s, t) => s + t.qty, 0),
+    );
+    const salesEnd =
+      spec.status === "CANCELLED"
+        ? new Date(Math.min(now.getTime(), startsAt.getTime()))
+        : new Date(Math.min(now.getTime(), startsAt.getTime()));
     const salesStart = salesOpenAt ?? new Date(startsAt.getTime() - 14 * DAY);
     const remaining = new Map(types.map((t) => [t.id, t.qty]));
     const memberUsed = new Set<string>();
@@ -297,15 +529,23 @@ export async function seedEvents(db: Db) {
       const isMember = !!buyer && memberAt(buyer, createdAtOrder);
       const guestName = `${faker.person.firstName()} ${faker.person.lastName()}`;
 
-      let qty = Math.min(target - sold, faker.helpers.weightedArrayElement([
-        { weight: 55, value: 1 },
-        { weight: 28, value: 2 },
-        { weight: 11, value: 3 },
-        { weight: 6, value: 4 },
-      ]));
+      let qty = Math.min(
+        target - sold,
+        faker.helpers.weightedArrayElement([
+          { weight: 55, value: 1 },
+          { weight: 28, value: 2 },
+          { weight: 11, value: 3 },
+          { weight: 6, value: 4 },
+        ]),
+      );
       const available = types.filter((t) => (remaining.get(t.id) ?? 0) > 0 && (!t.membersOnly || isMember));
       if (!available.length) break;
-      const type = faker.helpers.weightedArrayElement(available.map((t) => ({ weight: t.name.includes("VIP") || t.name.includes("Front") ? 1 : t.name.includes("Early") && r < 0.35 ? 6 : 4, value: t })));
+      const type = faker.helpers.weightedArrayElement(
+        available.map((t) => ({
+          weight: t.name.includes("VIP") || t.name.includes("Front") ? 1 : t.name.includes("Early") && r < 0.35 ? 6 : 4,
+          value: t,
+        })),
+      );
       if (type.membersOnly) qty = 1;
       qty = Math.min(qty, remaining.get(type.id)!);
       remaining.set(type.id, remaining.get(type.id)! - qty);
@@ -319,7 +559,11 @@ export async function seedEvents(db: Db) {
       const tickets = Array.from({ length: qty }, (_, i) => {
         const memberPrice = isMember && i === 0 && !memberUsed.has(buyer!.id);
         if (memberPrice) memberUsed.add(buyer!.id);
-        return { pricePaise: (memberPrice ? type.member : type.pub) * 100, isMemberPrice: memberPrice, holderName: i === 0 ? holder : `Guest of ${holder}` };
+        return {
+          pricePaise: (memberPrice ? type.member : type.pub) * 100,
+          isMemberPrice: memberPrice,
+          holderName: i === 0 ? holder : `Guest of ${holder}`,
+        };
       });
       const total = tickets.reduce((s, t) => s + t.pricePaise, 0);
 
@@ -348,12 +592,16 @@ export async function seedEvents(db: Db) {
         createdAt: orderTime,
       });
 
-      const attendedShare = spec.live ? spec.attendance * Math.min(1, Math.max(0, (now.getTime() - startsAt.getTime()) / (6 * 3600_000))) : spec.attendance;
+      const attendedShare = spec.live
+        ? spec.attendance * Math.min(1, Math.max(0, (now.getTime() - startsAt.getTime()) / (6 * 3600_000)))
+        : spec.attendance;
       for (const t of tickets) {
         const valid = orderStatus === "PAID";
         const checkIn =
           valid && (spec.dayOffset < 0 || spec.live) && faker.datatype.boolean(Math.max(0, Math.min(1, attendedShare)))
-            ? new Date(Math.min(now.getTime() - 60_000, startsAt.getTime() + faker.number.int({ min: -40, max: spec.live ? 360 : 100 }) * 60_000))
+            ? new Date(
+                Math.min(now.getTime() - 60_000, startsAt.getTime() + faker.number.int({ min: -40, max: spec.live ? 360 : 100 }) * 60_000),
+              )
             : null;
         ticketRows.push({
           code: faker.string.alphanumeric(20),
@@ -392,7 +640,15 @@ export async function seedEvents(db: Db) {
       }
       if (orderStatus === "REFUNDED") {
         const actor = faker.helpers.arrayElement(collectors);
-        auditRows.push({ actorId: actor.id, actorName: actor.name, action: "ticket.refund", entityType: "Event", entityId: eventId, summary: `Refunded ₹${total / 100} to ${holder} for "${spec.title}" — ${cancelledEvent ? "event cancelled" : "could not attend (medical)"}`, createdAt: new Date(Math.min(now.getTime(), startsAt.getTime() + DAY)) });
+        auditRows.push({
+          actorId: actor.id,
+          actorName: actor.name,
+          action: "ticket.refund",
+          entityType: "Event",
+          entityId: eventId,
+          summary: `Refunded ₹${total / 100} to ${holder} for "${spec.title}" — ${cancelledEvent ? "event cancelled" : "could not attend (medical)"}`,
+          createdAt: new Date(Math.min(now.getTime(), startsAt.getTime() + DAY)),
+        });
       }
     }
 
@@ -410,7 +666,9 @@ export async function seedEvents(db: Db) {
           ? 3
           : 0;
     for (const tpl of faker.helpers.arrayElements(INCIDENTS, incidentCount)) {
-      const created = new Date(Math.min(now.getTime() - 5 * 60_000, startsAt.getTime() + faker.number.int({ min: 10, max: spec.hours * 55 }) * 60_000));
+      const created = new Date(
+        Math.min(now.getTime() - 5 * 60_000, startsAt.getTime() + faker.number.int({ min: 10, max: spec.hours * 55 }) * 60_000),
+      );
       const open = spec.live && faker.datatype.boolean(0.5);
       incidentRows.push({
         eventId,
@@ -425,7 +683,15 @@ export async function seedEvents(db: Db) {
     }
     if (spec.status === "CANCELLED") {
       const head = eventHeads[0];
-      auditRows.push({ actorId: head.id, actorName: head.name, action: "event.cancel", entityType: "Event", entityId: eventId, summary: `Cancelled "${spec.title}" — ${spec.cancelledReason}`, createdAt: new Date(TODAY.getTime() - 2 * DAY) });
+      auditRows.push({
+        actorId: head.id,
+        actorName: head.name,
+        action: "event.cancel",
+        entityType: "Event",
+        entityId: eventId,
+        summary: `Cancelled "${spec.title}" — ${spec.cancelledReason}`,
+        createdAt: new Date(TODAY.getTime() - 2 * DAY),
+      });
     }
   }
 
@@ -457,7 +723,9 @@ export async function seedEvents(db: Db) {
   await db.$executeRaw`UPDATE "Event" e SET "allocated" = (SELECT count(*) FROM "Ticket" t WHERE t."eventId" = e.id AND t.status IN ('VALID','RESERVED'))`;
 
   // Buyers whose tickets were confirmed recently get a notification, like the app sends.
-  const recentPaid = orderRows.filter((o) => o.status === "PAID" && o.buyerId && (o.createdAt as Date) > new Date(now.getTime() - 10 * DAY));
+  const recentPaid = orderRows.filter(
+    (o) => o.status === "PAID" && o.buyerId && (o.createdAt as Date) > new Date(now.getTime() - 10 * DAY),
+  );
   await db.notification.createMany({
     data: recentPaid.slice(0, 120).map((o) => ({
       userId: o.buyerId!,

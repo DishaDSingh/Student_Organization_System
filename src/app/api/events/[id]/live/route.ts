@@ -26,7 +26,13 @@ export async function GET(req: NextRequest, ctx: RouteContext<"/api/events/[id]/
         where: { eventId: id, checkedInAt: { not: null } },
         orderBy: { checkedInAt: "desc" },
         take: 8,
-        select: { id: true, holderName: true, checkedInAt: true, ticketType: { select: { name: true } }, checkedInBy: { select: { name: true } } },
+        select: {
+          id: true,
+          holderName: true,
+          checkedInAt: true,
+          ticketType: { select: { name: true } },
+          checkedInBy: { select: { name: true } },
+        },
       }),
       db.eventIncident.findMany({
         where: { eventId: id },

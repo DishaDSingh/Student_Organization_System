@@ -85,14 +85,20 @@ export async function voidOrder(tx: Tx, orderId: string, to: "CANCELLED" | "REFU
   const byType = new Map<string, number>();
   for (const t of live) byType.set(t.ticketTypeId, (byType.get(t.ticketTypeId) ?? 0) + 1);
   await releaseSeats(tx, order.eventId, byType);
-  await tx.ticket.updateMany({ where: { orderId, status: { in: ["RESERVED", "VALID"] } }, data: { status: to === "REFUNDED" ? "REFUNDED" : "CANCELLED" } });
+  await tx.ticket.updateMany({
+    where: { orderId, status: { in: ["RESERVED", "VALID"] } },
+    data: { status: to === "REFUNDED" ? "REFUNDED" : "CANCELLED" },
+  });
   await tx.ticketOrder.update({ where: { id: orderId }, data: { status: to, holdUntil: null } });
   if (to === "REFUNDED" && order.payment) await tx.payment.update({ where: { id: order.payment.id }, data: { status: "REFUNDED" } });
   return { order, released: live.length };
 }
 
 /** Background job: release seats held by unpaid online orders past their hold. */
-export async function releaseExpiredHolds(db: { $transaction: <T>(fn: (tx: Tx) => Promise<T>) => Promise<T>; ticketOrder: Tx["ticketOrder"] }, now = new Date()) {
+export async function releaseExpiredHolds(
+  db: { $transaction: <T>(fn: (tx: Tx) => Promise<T>) => Promise<T>; ticketOrder: Tx["ticketOrder"] },
+  now = new Date(),
+) {
   const expired = await db.ticketOrder.findMany({
     where: { status: "PENDING_PAYMENT", holdUntil: { lt: now }, claimedReference: null },
     select: { id: true },

@@ -41,7 +41,9 @@ export default async function TicketScanPage(props: PageProps<"/t/[code]">) {
         )}
       >
         <Icon className={cn("size-16", tone === "success" ? "text-success" : tone === "warning" ? "text-amber-600" : "text-destructive")} />
-        <p className="mt-3 text-2xl font-semibold">{r.result === "ADMITTED" ? "Admit" : r.result === "ALREADY_IN" ? "Already checked in" : "Do not admit"}</p>
+        <p className="mt-3 text-2xl font-semibold">
+          {r.result === "ADMITTED" ? "Admit" : r.result === "ALREADY_IN" ? "Already checked in" : "Do not admit"}
+        </p>
         {"holderName" in r && r.holderName && <p className="mt-1 font-medium">{r.holderName}</p>}
         {"eventTitle" in r && r.eventTitle && <p className="text-muted-foreground text-sm">{r.eventTitle}</p>}
         {r.result === "REJECTED" && <p className="text-muted-foreground mt-2 text-sm">{r.reason}</p>}

@@ -71,12 +71,16 @@ export type PricedType = { id: string; name: string; memberPricePaise: number; p
 export function priceOrder(
   lines: { type: PricedType; quantity: number }[],
   opts: { isActiveMember: boolean; memberTicketAlreadyUsed: boolean },
-): { ok: true; tickets: { typeId: string; pricePaise: number; isMemberPrice: boolean }[]; totalPaise: number } | { ok: false; error: string } {
+):
+  | { ok: true; tickets: { typeId: string; pricePaise: number; isMemberPrice: boolean }[]; totalPaise: number }
+  | { ok: false; error: string } {
   let memberSlot = opts.isActiveMember && !opts.memberTicketAlreadyUsed;
   const tickets: { typeId: string; pricePaise: number; isMemberPrice: boolean }[] = [];
 
   // Apply the member discount where it saves the most.
-  const sorted = [...lines].sort((a, b) => b.type.publicPricePaise - b.type.memberPricePaise - (a.type.publicPricePaise - a.type.memberPricePaise));
+  const sorted = [...lines].sort(
+    (a, b) => b.type.publicPricePaise - b.type.memberPricePaise - (a.type.publicPricePaise - a.type.memberPricePaise),
+  );
   for (const { type, quantity } of sorted) {
     if (type.membersOnly) {
       if (!opts.isActiveMember) return { ok: false, error: `${type.name} tickets are for active members only.` };

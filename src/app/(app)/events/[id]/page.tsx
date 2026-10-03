@@ -58,17 +58,35 @@ export default async function EventPage(props: PageProps<"/events/[id]">) {
     staff ? eventStats(id) : null,
     db.membership.findMany({ where: { userId: user.id }, select: { status: true, startDate: true, endDate: true } }),
     db.ticket.count({ where: { eventId: id, isMemberPrice: true, status: { in: ["RESERVED", "VALID"] }, order: { buyerId: user.id } } }),
-    db.ticketOrder.findMany({ where: { eventId: id, buyerId: user.id }, orderBy: { createdAt: "desc" }, select: { id: true, orderNumber: true, status: true, totalPaise: true, _count: { select: { tickets: true } } } }),
+    db.ticketOrder.findMany({
+      where: { eventId: id, buyerId: user.id },
+      orderBy: { createdAt: "desc" },
+      select: { id: true, orderNumber: true, status: true, totalPaise: true, _count: { select: { tickets: true } } },
+    }),
     seeOrders
       ? db.ticketOrder.findMany({
           where: { eventId: id },
           orderBy: [{ status: "asc" }, { createdAt: "desc" }],
           take: 40,
-          select: { id: true, orderNumber: true, buyerName: true, status: true, channel: true, totalPaise: true, claimedReference: true, createdAt: true, _count: { select: { tickets: true } } },
+          select: {
+            id: true,
+            orderNumber: true,
+            buyerName: true,
+            status: true,
+            channel: true,
+            totalPaise: true,
+            claimedReference: true,
+            createdAt: true,
+            _count: { select: { tickets: true } },
+          },
         })
       : null,
     staff
-      ? db.eventIncident.findMany({ where: { eventId: id }, orderBy: [{ resolvedAt: { sort: "asc", nulls: "first" } }, { createdAt: "desc" }], include: { reportedBy: { select: { name: true } } } })
+      ? db.eventIncident.findMany({
+          where: { eventId: id },
+          orderBy: [{ resolvedAt: { sort: "asc", nulls: "first" } }, { createdAt: "desc" }],
+          include: { reportedBy: { select: { name: true } } },
+        })
       : null,
   ]);
   const myState = standing(myTerms).state;
@@ -89,7 +107,8 @@ export default async function EventPage(props: PageProps<"/events/[id]">) {
           <span className="flex flex-wrap gap-x-4 gap-y-1">
             <span className="inline-flex items-center gap-1.5">
               <CalendarClockIcon className="size-4" />
-              {fmtDateTime(event.startsAt)} – {event.endsAt.toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit", hour12: false })}
+              {fmtDateTime(event.startsAt)} –{" "}
+              {event.endsAt.toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit", hour12: false })}
             </span>
             <span className="inline-flex items-center gap-1.5">
               <MapPinIcon className="size-4" />
@@ -142,9 +161,20 @@ export default async function EventPage(props: PageProps<"/events/[id]">) {
             {
               label: phase === "ENDED" ? "Attended" : "Checked in",
               value: `${stats.checkedIn}`,
-              sub: phase === "ENDED" ? `${attendanceRate(stats.checkedIn, stats.sold)}% · ${stats.noShows} no-shows` : `${stats.sold - stats.checkedIn} still to arrive`,
+              sub:
+                phase === "ENDED"
+                  ? `${attendanceRate(stats.checkedIn, stats.sold)}% · ${stats.noShows} no-shows`
+                  : `${stats.sold - stats.checkedIn} still to arrive`,
             },
-            ...(seeOrders ? [{ label: "Revenue", value: formatINR(stats.revenuePaise), sub: stats.refundedPaise ? `${formatINR(stats.refundedPaise)} refunded` : "net of refunds" }] : []),
+            ...(seeOrders
+              ? [
+                  {
+                    label: "Revenue",
+                    value: formatINR(stats.revenuePaise),
+                    sub: stats.refundedPaise ? `${formatINR(stats.refundedPaise)} refunded` : "net of refunds",
+                  },
+                ]
+              : []),
             { label: "Open incidents", value: `${stats.incidentsOpen}`, sub: `${stats.pendingOrders} orders unpaid` },
           ].map((s) => (
             <div key={s.label} className="bg-card p-4 sm:p-5">
@@ -204,7 +234,10 @@ export default async function EventPage(props: PageProps<"/events/[id]">) {
           )}
 
           {orders && (
-            <Section title="Orders" description="Unpaid online orders hold seats for 48 hours unless the buyer has submitted a payment reference.">
+            <Section
+              title="Orders"
+              description="Unpaid online orders hold seats for 48 hours unless the buyer has submitted a payment reference."
+            >
               {orders.length ? (
                 <div className="-mx-4 overflow-x-auto sm:-mx-5">
                   <Table>
@@ -234,12 +267,15 @@ export default async function EventPage(props: PageProps<"/events/[id]">) {
                           </TableCell>
                           <TableCell className="text-right tabular-nums">{o.totalPaise ? formatINR(o.totalPaise) : "Free"}</TableCell>
                           <TableCell className="pr-4 text-right sm:pr-5">
-                            <span className={cn("text-xs font-medium", ORDER_TONE[o.status])}>{o.status.replace("_", " ").toLowerCase()}</span>
+                            <span className={cn("text-xs font-medium", ORDER_TONE[o.status])}>
+                              {o.status.replace("_", " ").toLowerCase()}
+                            </span>
                             <span className="ml-1 inline-flex">
                               {o.status === "PENDING_PAYMENT" && (can(user, "tickets.sell") || can(user, "finance.record_income")) && (
                                 <ConfirmOrderDialog orderId={o.id} totalPaise={o.totalPaise} claimedReference={o.claimedReference} />
                               )}
-                              {((o.status === "PENDING_PAYMENT" && can(user, "tickets.sell")) || (o.status === "PAID" && can(user, "tickets.refund"))) && (
+                              {((o.status === "PENDING_PAYMENT" && can(user, "tickets.sell")) ||
+                                (o.status === "PAID" && can(user, "tickets.refund"))) && (
                                 <VoidOrderButton orderId={o.id} paid={o.status === "PAID"} />
                               )}
                             </span>
@@ -264,7 +300,13 @@ export default async function EventPage(props: PageProps<"/events/[id]">) {
                       <span
                         className={cn(
                           "mt-1.5 size-2 shrink-0 rounded-full",
-                          i.resolvedAt ? "bg-muted-foreground/40" : i.severity === "HIGH" ? "bg-destructive" : i.severity === "MEDIUM" ? "bg-warning" : "bg-info",
+                          i.resolvedAt
+                            ? "bg-muted-foreground/40"
+                            : i.severity === "HIGH"
+                              ? "bg-destructive"
+                              : i.severity === "MEDIUM"
+                                ? "bg-warning"
+                                : "bg-info",
                         )}
                       />
                       <div className="min-w-0 flex-1">
@@ -336,7 +378,8 @@ export default async function EventPage(props: PageProps<"/events/[id]">) {
                 {myOrders.map((o) => (
                   <li key={o.id} className="flex justify-between gap-2">
                     <span>
-                      <span className="font-mono text-xs">{o.orderNumber}</span> · {o._count.tickets} ticket{o._count.tickets > 1 ? "s" : ""}
+                      <span className="font-mono text-xs">{o.orderNumber}</span> · {o._count.tickets} ticket
+                      {o._count.tickets > 1 ? "s" : ""}
                     </span>
                     <span className={cn("text-xs font-medium", ORDER_TONE[o.status])}>{o.status.replace("_", " ").toLowerCase()}</span>
                   </li>
