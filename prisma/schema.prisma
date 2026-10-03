@@ -83,6 +83,11 @@ model User {
   verificationsOfMe   PassVerification[] @relation("VerifiedMember")
   verificationsDone   PassVerification[] @relation("Verifier")
   notifications       Notification[]
+  eventsOrganized     Event[]            @relation("EventOrganizer")
+  eventsCreated       Event[]            @relation("EventCreator")
+  ticketOrders        TicketOrder[]      @relation("TicketBuyer")
+  ticketsCheckedIn    Ticket[]           @relation("TicketCheckedInBy")
+  incidentsReported   EventIncident[]    @relation("IncidentReporter")
 
   @@index([status])
   @@index([departmentId])
@@ -119,6 +124,7 @@ model Committee {
   department Department?       @relation(fields: [departmentId], references: [id], onDelete: SetNull)
   chair      User?             @relation("CommitteeChair", fields: [chairId], references: [id], onDelete: SetNull)
   members    CommitteeMember[]
+  events     Event[]
 }
 
 model CommitteeMember {
@@ -327,6 +333,10 @@ enum PaymentMethod {
 
 enum PaymentPurpose {
   MEMBERSHIP
+  TICKET
+  MERCH
+  DONATION
+  OTHER
 }
 
 enum PaymentStatus {
@@ -342,6 +352,7 @@ model Payment {
   purpose       PaymentPurpose
   payerId       String?
   membershipId  String?
+  ticketOrderId String?        @unique
   amountPaise   Int
   method        PaymentMethod
   reference     String?
@@ -351,9 +362,10 @@ model Payment {
   notes         String?
   createdAt     DateTime       @default(now())
 
-  payer      User?       @relation("PaymentPayer", fields: [payerId], references: [id], onDelete: SetNull)
-  receivedBy User?       @relation("PaymentReceiver", fields: [receivedById], references: [id], onDelete: SetNull)
-  membership Membership? @relation(fields: [membershipId], references: [id], onDelete: SetNull)
+  payer       User?        @relation("PaymentPayer", fields: [payerId], references: [id], onDelete: SetNull)
+  receivedBy  User?        @relation("PaymentReceiver", fields: [receivedById], references: [id], onDelete: SetNull)
+  membership  Membership?  @relation(fields: [membershipId], references: [id], onDelete: SetNull)
+  ticketOrder TicketOrder? @relation(fields: [ticketOrderId], references: [id], onDelete: SetNull)
 
   @@index([purpose, paidAt])
   @@index([payerId])
@@ -400,4 +412,160 @@ model Notification {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, readAt])
+}
+
+// ─── Events & tickets (Phase 4) ──────────────────────────────────────────────
+
+enum EventStatus {
+  DRAFT
+  PUBLISHED
+  CANCELLED
+}
+
+model Event {
+  id              String      @id @default(cuid())
+  title           String
+  description     String?
+  category        String
+  venue           String
+  startsAt        DateTime
+  endsAt          DateTime
+  capacity        Int
+  /// Tickets sold or held by unpaid orders. Updated atomically to prevent overselling.
+  allocated       Int         @default(0)
+  status          EventStatus @default(DRAFT)
+  salesOpenAt     DateTime?
+  salesCloseAt    DateTime?
+  organizerId     String?
+  committeeId     String?
+  createdById     String?
+  cancelledReason String?
+  publishedAt     DateTime?
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+
+  organizer   User?           @relation("EventOrganizer", fields: [organizerId], references: [id], onDelete: SetNull)
+  createdBy   User?           @relation("EventCreator", fields: [createdById], references: [id], onDelete: SetNull)
+  committee   Committee?      @relation(fields: [committeeId], references: [id], onDelete: SetNull)
+  ticketTypes TicketType[]
+  orders      TicketOrder[]
+  tickets     Ticket[]
+  incidents   EventIncident[]
+
+  @@index([status, startsAt])
+}
+
+model TicketType {
+  id               String   @id @default(cuid())
+  eventId          String
+  name             String
+  description      String?
+  /// Price for one ticket bought by an active member for themselves.
+  memberPricePaise Int
+  publicPricePaise Int
+  quantity         Int
+  allocated        Int      @default(0)
+  maxPerOrder      Int      @default(4)
+  membersOnly      Boolean  @default(false)
+  isActive         Boolean  @default(true)
+  sortOrder        Int      @default(0)
+  createdAt        DateTime @default(now())
+
+  event   Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  tickets Ticket[]
+
+  @@unique([eventId, name])
+}
+
+enum TicketOrderStatus {
+  PENDING_PAYMENT
+  PAID
+  CANCELLED
+  REFUNDED
+}
+
+enum SalesChannel {
+  ONLINE
+  DOOR
+}
+
+model TicketOrder {
+  id               String            @id @default(cuid())
+  orderNumber      String            @unique
+  eventId          String
+  buyerId          String?
+  buyerName        String
+  buyerEmail       String?
+  buyerPhone       String?
+  status           TicketOrderStatus @default(PENDING_PAYMENT)
+  channel          SalesChannel      @default(ONLINE)
+  totalPaise       Int
+  claimedReference String?
+  /// Unpaid online orders release their seats after this.
+  holdUntil        DateTime?
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+
+  event   Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  buyer   User?    @relation("TicketBuyer", fields: [buyerId], references: [id], onDelete: SetNull)
+  tickets Ticket[]
+  payment Payment?
+
+  @@index([eventId, status])
+  @@index([buyerId])
+}
+
+enum TicketStatus {
+  RESERVED
+  VALID
+  CANCELLED
+  REFUNDED
+}
+
+model Ticket {
+  id            String       @id @default(cuid())
+  /// Random secret encoded in the ticket QR.
+  code          String       @unique
+  orderId       String
+  eventId       String
+  ticketTypeId  String
+  holderName    String
+  pricePaise    Int
+  isMemberPrice Boolean      @default(false)
+  status        TicketStatus @default(RESERVED)
+  checkedInAt   DateTime?
+  checkedInById String?
+  createdAt     DateTime     @default(now())
+
+  order       TicketOrder @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  event       Event       @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  ticketType  TicketType  @relation(fields: [ticketTypeId], references: [id])
+  checkedInBy User?       @relation("TicketCheckedInBy", fields: [checkedInById], references: [id], onDelete: SetNull)
+
+  @@index([eventId, status])
+  @@index([eventId, checkedInAt])
+}
+
+enum IncidentSeverity {
+  LOW
+  MEDIUM
+  HIGH
+}
+
+model EventIncident {
+  id           String           @id @default(cuid())
+  eventId      String
+  title        String
+  details      String?
+  severity     IncidentSeverity @default(LOW)
+  location     String?
+  reportedById String?
+  resolvedAt   DateTime?
+  resolution   String?
+  createdAt    DateTime         @default(now())
+
+  event      Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  reportedBy User? @relation("IncidentReporter", fields: [reportedById], references: [id], onDelete: SetNull)
+
+  @@index([eventId, resolvedAt])
 }

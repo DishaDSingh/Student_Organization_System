@@ -1,10 +1,10 @@
 "use client";
 
-import { useEffect, useRef, useState, useTransition } from "react";
+import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import jsQR from "jsqr";
 import { toast } from "sonner";
-import { CameraIcon, CameraOffIcon, Loader2Icon, SearchIcon } from "lucide-react";
+import { Loader2Icon, SearchIcon } from "lucide-react";
+import { QrScanner, tokenAfter } from "@/components/qr-scanner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { MemberStateBadge } from "@/components/membership";
@@ -12,102 +12,15 @@ import type { MemberState } from "@/lib/membership/rules";
 import { fmtDate } from "@/lib/format";
 import { lookupMembers, recordManualVerification } from "../actions";
 
-/** Pull the pass token out of a scanned QR (our QR encodes …/verify/<token>). */
-function tokenFrom(text: string) {
-  const m = text.match(/\/verify\/([A-Za-z0-9_-]{16,64})(?:$|[?#])/);
-  return m?.[1] ?? null;
-}
-
-/**
- * Camera scanner using jsQR — decodes frames locally in the browser,
- * so it works without internet. Browsers only allow the camera on
- * https:// or localhost; manual lookup below covers everything else.
- */
+/** Member pass QR → the permission-gated result page. */
 export function PassScanner() {
   const router = useRouter();
-  const video = useRef<HTMLVideoElement>(null);
-  const canvas = useRef<HTMLCanvasElement>(null);
-  const [on, setOn] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (!on) return;
-    let stream: MediaStream | null = null;
-    let raf = 0;
-    let stopped = false;
-
-    (async () => {
-      try {
-        stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
-        if (stopped || !video.current) return;
-        video.current.srcObject = stream;
-        await video.current.play();
-        const tick = () => {
-          const v = video.current;
-          const c = canvas.current;
-          if (stopped || !v || !c) return;
-          if (v.readyState === v.HAVE_ENOUGH_DATA) {
-            c.width = v.videoWidth;
-            c.height = v.videoHeight;
-            const ctx = c.getContext("2d", { willReadFrequently: true })!;
-            ctx.drawImage(v, 0, 0, c.width, c.height);
-            const code = jsQR(ctx.getImageData(0, 0, c.width, c.height).data, c.width, c.height, { inversionAttempts: "dontInvert" });
-            const token = code && tokenFrom(code.data);
-            if (token) {
-              stopped = true;
-              navigator.vibrate?.(80);
-              router.push(`/verify/${token}`);
-              return;
-            }
-            if (code) setError("That QR code isn't a CampusBuzz member pass.");
-          }
-          raf = requestAnimationFrame(tick);
-        };
-        raf = requestAnimationFrame(tick);
-      } catch {
-        setError(
-          window.isSecureContext
-            ? "Camera permission was denied. Allow it in the browser, or use manual lookup."
-            : "Cameras only work on https:// or localhost. Use manual lookup on this device.",
-        );
-        setOn(false);
-      }
-    })();
-
-    return () => {
-      stopped = true;
-      cancelAnimationFrame(raf);
-      stream?.getTracks().forEach((t) => t.stop());
-    };
-  }, [on, router]);
-
   return (
-    <div className="grid gap-3">
-      <div className="relative aspect-square w-full overflow-hidden rounded-xl border bg-black sm:aspect-video">
-        <video ref={video} className="size-full object-cover" playsInline muted />
-        <canvas ref={canvas} className="hidden" />
-        {on ? (
-          <div className="pointer-events-none absolute inset-[15%] rounded-2xl border-2 border-white/80 shadow-[0_0_0_9999px_rgba(0,0,0,0.35)]" />
-        ) : (
-          <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 p-6 text-center text-white/80">
-            <CameraIcon className="size-8" />
-            <p className="text-sm">Point the camera at a member&apos;s pass QR.</p>
-          </div>
-        )}
-      </div>
-      {error && <p className="text-destructive text-sm">{error}</p>}
-      <Button
-        onClick={() => {
-          setError(null);
-          setOn((o) => !o);
-        }}
-        variant={on ? "outline" : "default"}
-        size="lg"
-      >
-        {on ? <CameraOffIcon /> : <CameraIcon />}
-        {on ? "Stop camera" : "Start scanning"}
-      </Button>
-    </div>
+    <QrScanner
+      extract={tokenAfter("verify")}
+      onToken={(token) => router.push(`/verify/${token}`)}
+      hint="Point the camera at a member's pass QR."
+    />
   );
 }
 

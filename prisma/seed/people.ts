@@ -1,7 +1,7 @@
 import bcrypt from "bcryptjs";
 import type { Prisma } from "../../src/generated/prisma/client";
 import { syncPermissionCatalog, ensurePresetRoles } from "../../src/lib/rbac/sync";
-import { DEMO_PASSWORD, EMAIL_DOMAIN, TODAY, between, daysAgo, daysFromNow, faker, type Db } from "./shared";
+import { DEMO_PASSWORD, EMAIL_DOMAIN, TODAY, between, bySize, daysAgo, daysFromNow, faker, type Db } from "./shared";
 
 /**
  * Phase 1–2 seed: organization, departments, ~420 people with roles,
@@ -216,9 +216,9 @@ export async function seedPeople(db: Db) {
 
   // Bulk groups: committee members (55), volunteers (65), general members (300)
   const groups = [
-    { group: "committee", count: 55, roleKeys: ["committee_member", "general_member"], withDept: true },
-    { group: "volunteer", count: 65, roleKeys: ["volunteer", "general_member"], withDept: true },
-    { group: "member", count: 300, roleKeys: ["general_member"], withDept: false },
+    { group: "committee", count: bySize(50, 55), roleKeys: ["committee_member", "general_member"], withDept: true },
+    { group: "volunteer", count: bySize(50, 65), roleKeys: ["volunteer", "general_member"], withDept: true },
+    { group: "member", count: bySize(60, 300), roleKeys: ["general_member"], withDept: false },
   ];
   const deptCodes = DEPARTMENTS.map((d) => d.code);
 

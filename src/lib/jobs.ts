@@ -2,21 +2,24 @@ import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient } from "@/generated/prisma/client";
 import { syncPermissionCatalog } from "@/lib/rbac/sync";
 import { runRenewalReminders } from "@/lib/membership/reminders";
+import { releaseExpiredHolds } from "@/lib/events/service";
 
 /**
  * Local background jobs — no cloud scheduler needed.
  *  - Keep the Permission table in sync with the code catalog (new phases add permissions).
- *  - Send renewal reminders on start-up and every 6 hours (idempotent).
+ *  - Every 30 minutes: renewal reminders (idempotent) and releasing seats held by unpaid orders.
  */
-const EVERY_6_HOURS = 6 * 60 * 60 * 1000;
+const EVERY_30_MINUTES = 30 * 60 * 1000;
 const g = globalThis as unknown as { __campusbuzzJobs?: NodeJS.Timeout };
 
 async function tick(db: PrismaClient) {
   try {
     const sent = await runRenewalReminders(db);
     if (sent) console.log(`[jobs] sent ${sent} renewal reminder(s)`);
+    const released = await releaseExpiredHolds(db);
+    if (released) console.log(`[jobs] released seats from ${released} unpaid order(s)`);
   } catch (e) {
-    console.error("[jobs] renewal reminders failed", e);
+    console.error("[jobs] background tick failed", e);
   }
 }
 
@@ -30,8 +33,8 @@ async function start() {
     return;
   }
   await tick(db);
-  g.__campusbuzzJobs = setInterval(() => void tick(db), EVERY_6_HOURS);
-  console.log("[jobs] started — permission catalog synced, renewal reminders every 6 h");
+  g.__campusbuzzJobs = setInterval(() => void tick(db), EVERY_30_MINUTES);
+  console.log("[jobs] started — permission catalog synced, renewal reminders + seat-hold expiry every 30 min");
 }
 
 void start();

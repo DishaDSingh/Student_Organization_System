@@ -28,3 +28,12 @@ export type Db = ReturnType<typeof createClient>;
 /** Shared demo password for every seeded account — documented in README "Demo logins". */
 export const DEMO_PASSWORD = "CampusBuzz@2026";
 export const EMAIL_DOMAIN = "horizon.test";
+
+/**
+ * Dataset size. "small" (default) keeps every category at roughly 50–60 rows so
+ * seeding is fast while developing; "full" is the large demo dataset.
+ *   npm run db:seed        → small
+ *   npm run db:seed:full   → full
+ */
+export const SEED_SIZE: "small" | "full" = process.env.SEED_SIZE === "full" ? "full" : "small";
+export const bySize = <T>(small: T, full: T): T => (SEED_SIZE === "full" ? full : small);

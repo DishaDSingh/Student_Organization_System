@@ -1,14 +1,14 @@
 import { addMonths } from "date-fns";
 import type { Prisma } from "../../src/generated/prisma/client";
 import { runRenewalReminders } from "../../src/lib/membership/reminders";
-import { DAY, TODAY, between, daysAgo, faker, type Db } from "./shared";
+import { DAY, TODAY, between, bySize, daysAgo, faker, type Db } from "./shared";
 
 /**
  * Phase 3 seed: plans, benefits, membership terms with real history,
  * payments with receipts, pass checks at the door, and renewal reminders.
  *
  * Built-in demo stories (relative to today):
- *  - exactly 42 members expire within 7 days   → "42 memberships expire within 7 days"
+ *  - a fixed number of members expire within 7 days (12 small / 42 full) → the "expiring soon" insight
  *  - ~14 online sign-ups waiting for payment confirmation (some with UPI refs)
  *  - ~48 lapsed members who never renewed
  *  - renewals that chain onto the previous term, so long-time members have 2–3 terms
@@ -135,12 +135,12 @@ export async function seedMembership(db: Db) {
   const leaders = users.filter(isLeader);
   const rest = faker.helpers.shuffle(users.filter((u) => !isLeader(u)));
   const quota: [Category, number][] = [
-    ["expiring7", 42],
-    ["expiring30", 26],
-    ["pending", 14],
-    ["expired", 48],
-    ["cancelled", 5],
-    ["none", 20],
+    ["expiring7", bySize(12, 42)],
+    ["expiring30", bySize(8, 26)],
+    ["pending", bySize(6, 14)],
+    ["expired", bySize(14, 48)],
+    ["cancelled", bySize(3, 5)],
+    ["none", bySize(8, 20)],
   ];
   const category = new Map<string, Category>(leaders.map((u) => [u.id, "active"]));
   let cursor = 0;
@@ -364,7 +364,7 @@ export async function seedMembership(db: Db) {
 
   // ── Door checks over the last two months ──
   const holders = [...firstStart.keys()];
-  const checks = Array.from({ length: 140 }, () => {
+  const checks = Array.from({ length: bySize(60, 140) }, () => {
     const memberId = faker.helpers.arrayElement(holders);
     const cat = category.get(memberId)!;
     return {

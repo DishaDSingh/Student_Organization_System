@@ -285,3 +285,83 @@ export const joinSchema = z
   .refine((v) => v.password === v.confirmPassword, { path: ["confirmPassword"], message: "Passwords don't match" });
 
 export const verifyLookupSchema = z.object({ query: z.string().trim().min(2, "Type at least 2 characters").max(80) });
+
+// ─── Events & tickets (Phase 4) ──────────────────────────────────────────────
+
+const EVENT_CATEGORY_VALUES = ["Gala", "Cultural", "Workshop", "Tech", "Sports", "Social", "Talk", "Fundraiser"] as const;
+const dateTime = z.coerce.date({ error: "Enter a valid date and time" });
+const optionalDateTime = z.preprocess((v) => (v === "" || v == null ? undefined : v), dateTime.optional());
+
+export const eventSchema = z
+  .object({
+    eventId: optionalId,
+    title: z.string().trim().min(3, "At least 3 characters").max(120, "At most 120 characters"),
+    description: optionalText(2000, "Description"),
+    category: z.enum(EVENT_CATEGORY_VALUES, { error: "Choose a category" }),
+    venue: z.string().trim().min(2, "Where is it?").max(120, "At most 120 characters"),
+    startsAt: dateTime,
+    endsAt: dateTime,
+    capacity: z.coerce.number().int("Whole number").min(1, "At least 1").max(20000, "At most 20,000"),
+    salesOpenAt: optionalDateTime,
+    salesCloseAt: optionalDateTime,
+    organizerId: optionalId,
+    committeeId: optionalId,
+  })
+  .refine((v) => v.endsAt > v.startsAt, { path: ["endsAt"], message: "Must end after it starts" })
+  .refine((v) => !v.salesCloseAt || v.salesCloseAt <= v.endsAt, { path: ["salesCloseAt"], message: "Sales must close before the event ends" })
+  .refine((v) => !v.salesOpenAt || !v.salesCloseAt || v.salesOpenAt < v.salesCloseAt, {
+    path: ["salesCloseAt"],
+    message: "Must be after sales open",
+  });
+
+export const ticketTypeSchema = z
+  .object({
+    ticketTypeId: optionalId,
+    eventId: id,
+    name: z.string().trim().min(2, "At least 2 characters").max(40, "At most 40 characters"),
+    description: optionalText(160, "Description"),
+    memberPriceRupees: rupees,
+    publicPriceRupees: rupees,
+    quantity: z.coerce.number().int("Whole number").min(1, "At least 1").max(20000, "At most 20,000"),
+    maxPerOrder: z.coerce.number().int().min(1, "At least 1").max(10, "At most 10"),
+    membersOnly: z.boolean().default(false),
+    isActive: z.boolean().default(true),
+  })
+  .refine((v) => v.memberPriceRupees <= v.publicPriceRupees, { path: ["memberPriceRupees"], message: "Member price can't exceed the public price" });
+
+const ticketLines = z
+  .array(z.object({ ticketTypeId: id, quantity: z.coerce.number().int().min(0).max(10) }))
+  .max(10)
+  .transform((lines) => lines.filter((l) => l.quantity > 0))
+  .refine((lines) => lines.length > 0, "Choose at least one ticket")
+  .refine((lines) => lines.reduce((s, l) => s + l.quantity, 0) <= 10, "At most 10 tickets per order");
+
+export const buyTicketsSchema = z.object({ eventId: id, lines: ticketLines, reference: paymentReference });
+
+export const doorSaleSchema = z
+  .object({
+    eventId: id,
+    memberId: optionalId,
+    buyerName: z.preprocess((v) => (v === "" ? undefined : v), personName.optional()),
+    buyerPhone: phone,
+    lines: ticketLines,
+    method: z.enum(PAYMENT_METHODS, { error: "Choose how it was paid" }),
+    reference: paymentReference,
+  })
+  .refine((v) => !!v.memberId || !!v.buyerName, { path: ["buyerName"], message: "Enter the buyer's name or pick a member" })
+  .refine((v) => v.method === "CASH" || !!v.reference, { path: ["reference"], message: "Enter the transaction reference" });
+
+export const confirmOrderSchema = z.intersection(z.object({ orderId: id }), paymentFields);
+export const voidOrderSchema = z.object({ orderId: id, reason: z.string().trim().min(3, "Give a short reason").max(200) });
+export const cancelEventSchema = z.object({ eventId: id, reason: z.string().trim().min(5, "Tell attendees why").max(300) });
+export const eventIdSchema = z.object({ eventId: id });
+
+export const incidentSchema = z.object({
+  eventId: id,
+  title: z.string().trim().min(3, "What happened?").max(120),
+  details: optionalText(1000, "Details"),
+  severity: z.enum(["LOW", "MEDIUM", "HIGH"]),
+  location: optionalText(80, "Location"),
+});
+export const resolveIncidentSchema = z.object({ incidentId: id, resolution: z.string().trim().min(3, "How was it resolved?").max(300) });
+export const checkInSchema = z.object({ code: z.string().trim().regex(/^[A-Za-z0-9_-]{16,64}$/, "Not a ticket code") });

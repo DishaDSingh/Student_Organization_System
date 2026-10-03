@@ -49,7 +49,7 @@ import {
 
 export type PlanOption = { id: string; name: string; pricePaise: number; durationMonths: number; description: string | null };
 
-function PaymentFields({
+export function PaymentFields({
   register,
   errors,
   method,
@@ -83,7 +83,7 @@ function PaymentFields({
   );
 }
 
-function PlanPicker({ plans, value, onChange }: { plans: PlanOption[]; value: string; onChange: (id: string) => void }) {
+export function PlanPicker({ plans, value, onChange }: { plans: PlanOption[]; value: string; onChange: (id: string) => void }) {
   return (
     <div role="radiogroup" aria-label="Membership plan" className="grid gap-2 sm:grid-cols-2">
       {plans.map((p) => (

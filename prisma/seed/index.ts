@@ -1,7 +1,8 @@
 import "dotenv/config";
-import { createClient } from "./shared";
+import { SEED_SIZE, createClient } from "./shared";
 import { seedPeople } from "./people";
 import { seedMembership } from "./membership";
+import { seedEvents } from "./events";
 
 /**
  * `npm run db:seed` — wipes the local database and rebuilds the demo dataset.
@@ -12,11 +13,16 @@ async function main() {
   const db = createClient();
 
   try {
-    console.log("Resetting demo data…");
+    console.log(`Resetting demo data (${SEED_SIZE} dataset)…`);
     // Children before parents. Later phases prepend their tables here.
+    await db.eventIncident.deleteMany();
+    await db.ticket.deleteMany();
     await db.notification.deleteMany();
     await db.passVerification.deleteMany();
     await db.payment.deleteMany();
+    await db.ticketOrder.deleteMany();
+    await db.ticketType.deleteMany();
+    await db.event.deleteMany();
     await db.membership.deleteMany();
     await db.planBenefit.deleteMany();
     await db.membershipBenefit.deleteMany();
@@ -39,6 +45,9 @@ async function main() {
 
     console.log("Phase 3: plans, memberships, payments, pass checks, reminders…");
     console.table(await seedMembership(db));
+
+    console.log("Phase 4: events, tickets, check-ins, incidents…");
+    console.table(await seedEvents(db));
   } finally {
     await db.$disconnect();
   }
