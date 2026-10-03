@@ -87,6 +87,7 @@ export const ROLE_PRESETS: RolePreset[] = [
     permissions: [
       ...allOf("finance"),
       "members.view",
+      "members.manage_plans",
       "tickets.view",
       "merchandise.view",
       "fundraisers.view",
@@ -112,6 +113,7 @@ export const ROLE_PRESETS: RolePreset[] = [
       "members.add",
       "members.edit",
       "members.verify",
+      "members.manage_plans",
       ...allOf("announcements"),
       ...allOf("calendar"),
       "reports.view",

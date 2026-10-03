@@ -18,6 +18,7 @@ export const updateOrganization = guardedAction({ permission: "organization.mana
     phone: input.phone ?? null,
     website: input.website ?? null,
     address: input.address ?? null,
+    upiId: input.upiId ?? null,
   };
   const { id: _id, createdAt: _c, updatedAt: _u, currency: _cur, timezone: _tz, ...before } = org;
   const changes = diff(before, next);

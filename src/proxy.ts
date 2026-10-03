@@ -5,7 +5,7 @@ import { NextResponse, type NextRequest } from "next/server";
  * This only checks that a cookie exists — real verification (signature,
  * user status, permissions) happens server-side in every page and action.
  */
-const PUBLIC_PATHS = ["/login", "/setup"];
+const PUBLIC_PATHS = ["/login", "/setup", "/join"];
 
 export function proxy(request: NextRequest) {
   const { pathname, search } = request.nextUrl;

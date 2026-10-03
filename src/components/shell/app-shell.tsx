@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { CommandDialog, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Logo } from "./logo";
+import { NotificationBell } from "./notification-bell";
 import { visibleNav, type NavGroup } from "./nav";
 import { cn } from "@/lib/utils";
 import { logout } from "@/app/(auth)/actions";
@@ -86,6 +87,7 @@ export function AppShell({
             <kbd className="bg-background ml-auto hidden rounded border px-1.5 font-mono text-[10px] sm:inline">Ctrl K</kbd>
           </button>
           <div className="flex items-center gap-1 lg:ml-auto">
+            <NotificationBell />
             <ThemeMenu />
             <UserMenu user={user} />
           </div>
@@ -99,6 +101,11 @@ export function AppShell({
 }
 
 function SidebarContent({ nav, orgShortName, pathname }: { nav: NavGroup[]; orgShortName: string; pathname: string }) {
+  // The most specific match wins, so /members/verify doesn't also light up /members.
+  const activeHref = nav
+    .flatMap((g) => g.items.map((i) => i.href))
+    .filter((h) => pathname === h || pathname.startsWith(`${h}/`))
+    .sort((a, b) => b.length - a.length)[0];
   return (
     <>
       <div className="flex h-14 items-center gap-2 border-b px-4">
@@ -113,7 +120,7 @@ function SidebarContent({ nav, orgShortName, pathname }: { nav: NavGroup[]; orgS
             <p className="text-muted-foreground mb-1 px-2 text-[11px] font-semibold tracking-wider uppercase">{group.label}</p>
             <ul className="grid gap-0.5">
               {group.items.map((item) => {
-                const active = pathname === item.href || pathname.startsWith(`${item.href}/`);
+                const active = item.href === activeHref;
                 return (
                   <li key={item.href}>
                     <Link

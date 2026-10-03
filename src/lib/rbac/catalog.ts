@@ -86,6 +86,7 @@ export const PERMISSION_MODULES = [
       { action: "delete", label: "Delete", description: "Remove member records", sensitive: true },
       { action: "export", label: "Export", description: "Download member data", sensitive: true },
       { action: "verify", label: "Verify passes", description: "Scan and verify digital member passes" },
+      { action: "manage_plans", label: "Manage plans & benefits", description: "Set membership plans, prices and benefits" },
     ],
   },
   {

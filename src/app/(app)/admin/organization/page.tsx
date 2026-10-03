@@ -27,6 +27,8 @@ export default async function OrganizationPage() {
           website: org.website ?? "",
           address: org.address ?? "",
           academicYearStart: org.academicYearStart,
+          allowSelfRegistration: org.allowSelfRegistration,
+          upiId: org.upiId ?? "",
         }}
       />
     </>

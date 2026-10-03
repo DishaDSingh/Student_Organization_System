@@ -50,8 +50,12 @@ export function LoginForm({ next }: { next: string }) {
         {pending && <Loader2Icon className="animate-spin" />}
         Sign in
       </Button>
-      <p className="text-muted-foreground text-xs">
-        Accounts are created by your organization&apos;s admins. Forgot your password? Ask an admin to reset it.
+      <p className="text-muted-foreground text-xs">Forgot your password? Ask an admin to reset it.</p>
+      <p className="border-t pt-4 text-sm">
+        New here?{" "}
+        <a href="/join" className="text-primary font-medium hover:underline">
+          Become a member
+        </a>
       </p>
     </form>
   );

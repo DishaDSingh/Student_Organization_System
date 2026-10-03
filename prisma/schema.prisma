@@ -14,21 +14,25 @@ datasource db {
 // One installation = one student organization. Created by the setup wizard.
 
 model Organization {
-  id                String   @id @default(cuid())
-  name              String
-  shortName         String
-  description       String?
-  email             String?
-  phone             String?
-  website           String?
-  address           String?
-  institution       String?
+  id                    String   @id @default(cuid())
+  name                  String
+  shortName             String
+  description           String?
+  email                 String?
+  phone                 String?
+  website               String?
+  address               String?
+  institution           String?
   /// Month (1-12) the academic year starts; drives terms and reports.
-  academicYearStart Int      @default(7)
-  currency          String   @default("INR")
-  timezone          String   @default("Asia/Kolkata")
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
+  academicYearStart     Int      @default(7)
+  /// Lets students sign themselves up at /join (membership stays pending until dues are confirmed).
+  allowSelfRegistration Boolean  @default(true)
+  /// UPI ID members pay dues to; shown as a scannable UPI QR on renewal.
+  upiId                 String?
+  currency              String   @default("INR")
+  timezone              String   @default("Asia/Kolkata")
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
 }
 
 // ─── People ──────────────────────────────────────────────────────────────────
@@ -53,19 +57,32 @@ model User {
   /// Bumped on suspend / password change to invalidate existing sessions.
   sessionVersion Int        @default(0)
   departmentId   String?
+  /// Course / programme, e.g. "B.Tech Computer Engineering".
+  program        String?
+  yearOfStudy    Int?
+  /// Assigned on first activated membership, e.g. "HSA-00042".
+  memberNumber   String?    @unique
+  /// Random secret encoded in the pass QR. Rotating it invalidates old screenshots.
+  passToken      String?    @unique
   lastLoginAt    DateTime?
   createdAt      DateTime   @default(now())
   updatedAt      DateTime   @updatedAt
 
-  department          Department?       @relation("DepartmentMembers", fields: [departmentId], references: [id], onDelete: SetNull)
-  headOfDepartments   Department[]      @relation("DepartmentHead")
-  chairOfCommittees   Committee[]       @relation("CommitteeChair")
+  department          Department?        @relation("DepartmentMembers", fields: [departmentId], references: [id], onDelete: SetNull)
+  headOfDepartments   Department[]       @relation("DepartmentHead")
+  chairOfCommittees   Committee[]        @relation("CommitteeChair")
   committees          CommitteeMember[]
-  roles               UserRole[]        @relation("UserRoles")
-  rolesAssigned       UserRole[]        @relation("RoleAssigner")
-  permissionOverrides UserPermission[]  @relation("UserOverrides")
-  overridesGranted    UserPermission[]  @relation("OverrideGranter")
+  roles               UserRole[]         @relation("UserRoles")
+  rolesAssigned       UserRole[]         @relation("RoleAssigner")
+  permissionOverrides UserPermission[]   @relation("UserOverrides")
+  overridesGranted    UserPermission[]   @relation("OverrideGranter")
   auditLogs           AuditLog[]
+  memberships         Membership[]       @relation("MemberMemberships")
+  paymentsMade        Payment[]          @relation("PaymentPayer")
+  paymentsReceived    Payment[]          @relation("PaymentReceiver")
+  verificationsOfMe   PassVerification[] @relation("VerifiedMember")
+  verificationsDone   PassVerification[] @relation("Verifier")
+  notifications       Notification[]
 
   @@index([status])
   @@index([departmentId])
@@ -224,4 +241,163 @@ model AuditLog {
   @@index([entityType, entityId])
   @@index([actorId])
   @@index([action])
+}
+
+// ─── Membership (Phase 3) ────────────────────────────────────────────────────
+
+model MembershipPlan {
+  id             String   @id @default(cuid())
+  code           String   @unique
+  name           String   @unique
+  description    String?
+  durationMonths Int
+  /// Money is always stored in paise to avoid floating-point errors.
+  pricePaise     Int
+  isActive       Boolean  @default(true)
+  sortOrder      Int      @default(0)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  benefits    PlanBenefit[]
+  memberships Membership[]
+}
+
+model MembershipBenefit {
+  id          String   @id @default(cuid())
+  title       String   @unique
+  description String?
+  isActive    Boolean  @default(true)
+  sortOrder   Int      @default(0)
+  createdAt   DateTime @default(now())
+
+  plans PlanBenefit[]
+}
+
+model PlanBenefit {
+  planId    String
+  benefitId String
+
+  plan    MembershipPlan    @relation(fields: [planId], references: [id], onDelete: Cascade)
+  benefit MembershipBenefit @relation(fields: [benefitId], references: [id], onDelete: Cascade)
+
+  @@id([planId, benefitId])
+}
+
+/// Stored states only. "Expired" and "expiring soon" are derived from endDate,
+/// so no background job is needed to keep statuses correct.
+enum MembershipStatus {
+  PENDING_PAYMENT
+  ACTIVE
+  CANCELLED
+}
+
+/// One term of membership. Renewals add a new row, so history is never lost.
+model Membership {
+  id               String           @id @default(cuid())
+  userId           String
+  planId           String
+  status           MembershipStatus @default(PENDING_PAYMENT)
+  /// Set when the term is activated (dues confirmed).
+  startDate        DateTime?
+  endDate          DateTime?
+  /// Price at the time of joining — plan prices can change later.
+  pricePaise       Int
+  /// UPI / bank reference the member submitted while waiting for confirmation.
+  claimedReference String?
+  isRenewal        Boolean          @default(false)
+  cancelledReason  String?
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+
+  user     User           @relation("MemberMemberships", fields: [userId], references: [id], onDelete: Cascade)
+  plan     MembershipPlan @relation(fields: [planId], references: [id])
+  payments Payment[]
+
+  @@index([userId])
+  @@index([status, endDate])
+}
+
+enum PaymentMethod {
+  CASH
+  UPI
+  CARD
+  BANK_TRANSFER
+  ONLINE
+}
+
+enum PaymentPurpose {
+  MEMBERSHIP
+}
+
+enum PaymentStatus {
+  PAID
+  REFUNDED
+}
+
+/// Money received. Starts with membership dues; tickets, merch and donations
+/// join in later phases and the finance module reads from here.
+model Payment {
+  id            String         @id @default(cuid())
+  receiptNumber String         @unique
+  purpose       PaymentPurpose
+  payerId       String?
+  membershipId  String?
+  amountPaise   Int
+  method        PaymentMethod
+  reference     String?
+  status        PaymentStatus  @default(PAID)
+  receivedById  String?
+  paidAt        DateTime       @default(now())
+  notes         String?
+  createdAt     DateTime       @default(now())
+
+  payer      User?       @relation("PaymentPayer", fields: [payerId], references: [id], onDelete: SetNull)
+  receivedBy User?       @relation("PaymentReceiver", fields: [receivedById], references: [id], onDelete: SetNull)
+  membership Membership? @relation(fields: [membershipId], references: [id], onDelete: SetNull)
+
+  @@index([purpose, paidAt])
+  @@index([payerId])
+}
+
+enum VerificationResult {
+  VALID
+  EXPIRED
+  PENDING
+  CANCELLED
+  NOT_MEMBER
+  INVALID_PASS
+}
+
+/// Every pass check at the door. Feeds event check-in and analytics later.
+model PassVerification {
+  id           String             @id @default(cuid())
+  memberId     String?
+  verifiedById String
+  result       VerificationResult
+  method       String // "scan" | "manual"
+  createdAt    DateTime           @default(now())
+
+  member     User? @relation("VerifiedMember", fields: [memberId], references: [id], onDelete: SetNull)
+  verifiedBy User  @relation("Verifier", fields: [verifiedById], references: [id], onDelete: Cascade)
+
+  @@index([createdAt])
+  @@index([memberId])
+}
+
+/// In-app notifications (renewal reminders now; tasks, events, alerts later).
+model Notification {
+  id        String    @id @default(cuid())
+  userId    String
+  type      String // e.g. "membership.expiring"
+  title     String
+  body      String
+  link      String?
+  /// Makes automated reminders idempotent: the same reminder is never sent twice.
+  dedupeKey String?   @unique
+  readAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, readAt])
 }

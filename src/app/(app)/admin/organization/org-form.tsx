@@ -2,7 +2,7 @@
 
 import { useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { useForm } from "react-hook-form";
+import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import type { z } from "zod";
 import { toast } from "sonner";
@@ -10,6 +10,7 @@ import { Loader2Icon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { Switch } from "@/components/ui/switch";
 import { Field, NativeSelect, applyServerErrors } from "@/components/form/field";
 import { organizationSchema } from "@/lib/validation/schemas";
 import { updateOrganization } from "./actions";
@@ -82,6 +83,34 @@ export function OrganizationForm({ org, editable }: { org: Org; editable: boolea
           <Field id="address" label="Address" error={e.address?.message}>
             <Textarea rows={3} {...form.register("address")} />
           </Field>
+        </div>
+        <div className="bg-card grid content-start gap-4 rounded-xl border p-4 sm:p-5 lg:col-span-2">
+          <h2 className="font-medium">Membership</h2>
+          <div className="grid gap-4 md:grid-cols-2">
+            <Field
+              id="upiId"
+              label="UPI ID for dues"
+              hint="Members see a scannable UPI QR for the exact amount when they join or renew."
+              error={e.upiId?.message}
+            >
+              <Input placeholder="hsa@okicici" {...form.register("upiId")} />
+            </Field>
+            <Controller
+              control={form.control}
+              name="allowSelfRegistration"
+              render={({ field }) => (
+                <label className="flex items-start justify-between gap-3 rounded-lg border p-3 text-sm">
+                  <span>
+                    <span className="font-medium">Open sign-up</span>
+                    <span className="text-muted-foreground block">
+                      Students can register at <span className="font-mono">/join</span>. Membership stays pending until dues are confirmed.
+                    </span>
+                  </span>
+                  <Switch checked={!!field.value} onCheckedChange={field.onChange} />
+                </label>
+              )}
+            />
+          </div>
         </div>
       </fieldset>
       {editable && (
