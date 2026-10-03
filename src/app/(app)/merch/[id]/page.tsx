@@ -3,7 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { db } from "@/lib/db";
 import { can, requireUser } from "@/lib/auth/current-user";
-import { PageHeader, Section } from "@/components/common";
+import { PageHeader, PageTabs, Section, activeTab } from "@/components/common";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { fmtDateTime } from "@/lib/format";
 import { cn } from "@/lib/utils";
@@ -21,6 +21,7 @@ export default async function ProductPage(props: PageProps<"/merch/[id]">) {
   const user = await requireUser();
   const staff = can(user, "merchandise.view");
   const { id } = await props.params;
+  const tab = staff ? activeTab(["product", "stock"] as const, (await props.searchParams).tab) : "product";
 
   const p = await db.product.findUnique({
     where: { id },
@@ -92,20 +93,33 @@ export default async function ProductPage(props: PageProps<"/merch/[id]">) {
         actions={can(user, "merchandise.manage_products") && <EditProductDialog product={p} />}
       />
 
-      <section className="bg-card mb-6 rounded-xl border p-4 sm:p-6">
-        <ProductView
-          art={mockupProps(p)}
-          variants={variants.filter((v) => v.isActive)}
-          pricePaise={isMember ? p.memberPricePaise : p.publicPricePaise}
-          publicPricePaise={p.publicPricePaise}
-          isMember={isMember}
-          buyable={p.status === "ACTIVE"}
-        />
-        {p.description && <p className="text-muted-foreground mt-6 max-w-2xl text-sm">{p.description}</p>}
-        <p className="text-muted-foreground mt-3 text-xs">Preview is a visual mockup; final print may differ slightly.</p>
-      </section>
-
       {staff && (
+        <PageTabs
+          basePath={`/merch/${p.id}`}
+          current={tab}
+          tabs={[
+            { key: "product", label: "Product" },
+            { key: "stock", label: "Stock", count: variants.reduce((n, v) => n + v.stock, 0) },
+          ]}
+        />
+      )}
+
+      {tab === "product" && (
+        <section className="bg-card mb-6 rounded-xl border p-4 sm:p-6">
+          <ProductView
+            art={mockupProps(p)}
+            variants={variants.filter((v) => v.isActive)}
+            pricePaise={isMember ? p.memberPricePaise : p.publicPricePaise}
+            publicPricePaise={p.publicPricePaise}
+            isMember={isMember}
+            buyable={p.status === "ACTIVE"}
+          />
+          {p.description && <p className="text-muted-foreground mt-6 max-w-2xl text-sm">{p.description}</p>}
+          <p className="text-muted-foreground mt-3 text-xs">Preview is a visual mockup; final print may differ slightly.</p>
+        </section>
+      )}
+
+      {staff && tab === "stock" && (
         <div className="grid gap-6 lg:grid-cols-[1fr_22rem]">
           <Section
             title="Stock by size"

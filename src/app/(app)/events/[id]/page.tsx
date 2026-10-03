@@ -1,10 +1,10 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { CalendarClockIcon, MapPinIcon, MonitorPlayIcon, PencilIcon, ScanLineIcon, UsersIcon } from "lucide-react";
+import { CalendarClockIcon, MapPinIcon, MonitorPlayIcon, PencilIcon, ScanLineIcon } from "lucide-react";
 import { db } from "@/lib/db";
 import { can, requireUser } from "@/lib/auth/current-user";
-import { PageHeader, Section } from "@/components/common";
+import { PageHeader, PageTabs, Section, activeTab } from "@/components/common";
 import { Meter, PhaseBadge, SalesBadge } from "@/components/events";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -37,6 +37,8 @@ export default async function EventPage(props: PageProps<"/events/[id]">) {
   const user = await requireUser();
   const { id } = await props.params;
   const staff = can(user, "events.view");
+  // Staff see the event split into tabs; members only ever need the overview.
+  const tab = staff ? activeTab(["overview", "types", "orders", "incidents"] as const, (await props.searchParams).tab) : "overview";
 
   const event = await db.event.findUnique({
     where: { id },
@@ -63,7 +65,7 @@ export default async function EventPage(props: PageProps<"/events/[id]">) {
       orderBy: { createdAt: "desc" },
       select: { id: true, orderNumber: true, status: true, totalPaise: true, _count: { select: { tickets: true } } },
     }),
-    seeOrders
+    seeOrders && tab === "orders"
       ? db.ticketOrder.findMany({
           where: { eventId: id },
           orderBy: [{ status: "asc" }, { createdAt: "desc" }],
@@ -81,7 +83,7 @@ export default async function EventPage(props: PageProps<"/events/[id]">) {
           },
         })
       : null,
-    staff
+    staff && tab === "incidents"
       ? db.eventIncident.findMany({
           where: { eventId: id },
           orderBy: [{ resolvedAt: { sort: "asc", nulls: "first" } }, { createdAt: "desc" }],
@@ -154,7 +156,20 @@ export default async function EventPage(props: PageProps<"/events/[id]">) {
         </p>
       )}
 
-      {stats && (
+      {staff && (
+        <PageTabs
+          basePath={`/events/${id}`}
+          current={tab}
+          tabs={[
+            { key: "overview", label: "Overview" },
+            { key: "types", label: "Ticket types", count: event.ticketTypes.length },
+            ...(seeOrders ? [{ key: "orders", label: "Orders" }] : []),
+            { key: "incidents", label: "Incidents" },
+          ]}
+        />
+      )}
+
+      {stats && tab === "overview" && (
         <div className="bg-border mb-6 grid grid-cols-2 gap-px overflow-hidden rounded-xl border lg:grid-cols-4">
           {[
             { label: "Tickets sold", value: `${stats.sold}`, sub: `of ${event.capacity} · ${stats.reserved} awaiting payment` },
@@ -186,9 +201,9 @@ export default async function EventPage(props: PageProps<"/events/[id]">) {
         </div>
       )}
 
-      <div className="grid gap-6 lg:grid-cols-[1fr_24rem]">
+      <div className={cn("grid gap-6", tab === "overview" && "lg:grid-cols-[1fr_24rem]")}>
         <div className="grid min-w-0 content-start gap-6">
-          {event.description && (
+          {event.description && tab === "overview" && (
             <Section title="About">
               <p className="text-sm leading-relaxed whitespace-pre-line">{event.description}</p>
               <p className="text-muted-foreground mt-4 flex flex-wrap gap-x-4 text-xs">
@@ -198,7 +213,7 @@ export default async function EventPage(props: PageProps<"/events/[id]">) {
             </Section>
           )}
 
-          {staff && (
+          {tab === "types" && (
             <Section
               title="Ticket types"
               description="Member price applies to an active member's own ticket."
@@ -327,80 +342,69 @@ export default async function EventPage(props: PageProps<"/events/[id]">) {
           )}
         </div>
 
-        <aside className="grid content-start gap-6">
-          <Section title="Tickets" actions={<SalesBadge state={sales} />}>
-            {sales === "OPEN" && activeTypes.length ? (
-              <BuyTicketsPanel
-                eventId={id}
-                memberPriceAvailable={isMember && myMemberTickets === 0}
-                types={activeTypes.map((t) => ({
-                  id: t.id,
-                  name: t.name,
-                  description: t.description,
-                  memberPricePaise: t.memberPricePaise,
-                  publicPricePaise: t.publicPricePaise,
-                  remaining: Math.max(0, Math.min(t.quantity - t.allocated, event.capacity - event.allocated)),
-                  maxPerOrder: t.maxPerOrder,
-                  membersOnly: t.membersOnly,
-                }))}
-              />
-            ) : (
-              <p className="text-muted-foreground text-sm">
-                {sales === "NOT_YET" && event.salesOpenAt
-                  ? `Tickets go on sale ${fmtDateTime(event.salesOpenAt)}.`
-                  : sales === "SOLD_OUT"
-                    ? "Sold out."
-                    : event.status === "DRAFT"
-                      ? "Draft — not visible to members yet."
-                      : "Ticket sales are closed."}
-              </p>
-            )}
-            {!isMember && sales === "OPEN" && (
-              <p className="text-muted-foreground mt-3 text-xs">
-                <Link href="/me" className="text-primary hover:underline">
-                  Become a member
-                </Link>{" "}
-                to get member pricing.
-              </p>
-            )}
-          </Section>
-
-          {myOrders.length > 0 && (
-            <Section
-              title="Your orders"
-              actions={
-                <Link href="/me/tickets" className="text-primary text-sm hover:underline">
-                  My tickets
-                </Link>
-              }
-            >
-              <ul className="grid gap-2 text-sm">
-                {myOrders.map((o) => (
-                  <li key={o.id} className="flex justify-between gap-2">
-                    <span>
-                      <span className="font-mono text-xs">{o.orderNumber}</span> · {o._count.tickets} ticket
-                      {o._count.tickets > 1 ? "s" : ""}
-                    </span>
-                    <span className={cn("text-xs font-medium", ORDER_TONE[o.status])}>{o.status.replace("_", " ").toLowerCase()}</span>
-                  </li>
-                ))}
-              </ul>
+        {tab === "overview" && (
+          <aside className="grid content-start gap-6">
+            <Section title="Tickets" actions={<SalesBadge state={sales} />}>
+              {sales === "OPEN" && activeTypes.length ? (
+                <BuyTicketsPanel
+                  eventId={id}
+                  memberPriceAvailable={isMember && myMemberTickets === 0}
+                  types={activeTypes.map((t) => ({
+                    id: t.id,
+                    name: t.name,
+                    description: t.description,
+                    memberPricePaise: t.memberPricePaise,
+                    publicPricePaise: t.publicPricePaise,
+                    remaining: Math.max(0, Math.min(t.quantity - t.allocated, event.capacity - event.allocated)),
+                    maxPerOrder: t.maxPerOrder,
+                    membersOnly: t.membersOnly,
+                  }))}
+                />
+              ) : (
+                <p className="text-muted-foreground text-sm">
+                  {sales === "NOT_YET" && event.salesOpenAt
+                    ? `Tickets go on sale ${fmtDateTime(event.salesOpenAt)}.`
+                    : sales === "SOLD_OUT"
+                      ? "Sold out."
+                      : event.status === "DRAFT"
+                        ? "Draft — not visible to members yet."
+                        : "Ticket sales are closed."}
+                </p>
+              )}
+              {!isMember && sales === "OPEN" && (
+                <p className="text-muted-foreground mt-3 text-xs">
+                  <Link href="/me" className="text-primary hover:underline">
+                    Become a member
+                  </Link>{" "}
+                  to get member pricing.
+                </p>
+              )}
             </Section>
-          )}
 
-          {stats && (
-            <Section title="Capacity">
-              <div className="flex items-center gap-3 text-sm">
-                <UsersIcon className="text-muted-foreground size-4" />
-                <span className="tabular-nums">
-                  {event.allocated} / {event.capacity}
-                </span>
-                <span className="text-muted-foreground ml-auto text-xs">{Math.round((event.allocated / event.capacity) * 100)}% full</span>
-              </div>
-              <Meter value={event.allocated} max={event.capacity} className="mt-2" />
-            </Section>
-          )}
-        </aside>
+            {myOrders.length > 0 && (
+              <Section
+                title="Your orders"
+                actions={
+                  <Link href="/me/tickets" className="text-primary text-sm hover:underline">
+                    My tickets
+                  </Link>
+                }
+              >
+                <ul className="grid gap-2 text-sm">
+                  {myOrders.map((o) => (
+                    <li key={o.id} className="flex justify-between gap-2">
+                      <span>
+                        <span className="font-mono text-xs">{o.orderNumber}</span> · {o._count.tickets} ticket
+                        {o._count.tickets > 1 ? "s" : ""}
+                      </span>
+                      <span className={cn("text-xs font-medium", ORDER_TONE[o.status])}>{o.status.replace("_", " ").toLowerCase()}</span>
+                    </li>
+                  ))}
+                </ul>
+              </Section>
+            )}
+          </aside>
+        )}
       </div>
     </>
   );
