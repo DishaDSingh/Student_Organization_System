@@ -88,6 +88,12 @@ model User {
   ticketOrders        TicketOrder[]      @relation("TicketBuyer")
   ticketsCheckedIn    Ticket[]           @relation("TicketCheckedInBy")
   incidentsReported   EventIncident[]    @relation("IncidentReporter")
+  merchOrders         MerchOrder[]       @relation("MerchBuyer")
+  merchFulfilled      MerchOrder[]       @relation("MerchFulfiller")
+  stockMovements      StockMovement[]
+  designsCreated      MerchDesign[]      @relation("DesignCreator")
+  designsReviewed     MerchDesign[]      @relation("DesignReviewer")
+  uploads             Upload[]
 
   @@index([status])
   @@index([departmentId])
@@ -353,6 +359,7 @@ model Payment {
   payerId       String?
   membershipId  String?
   ticketOrderId String?        @unique
+  merchOrderId  String?        @unique
   amountPaise   Int
   method        PaymentMethod
   reference     String?
@@ -366,6 +373,7 @@ model Payment {
   receivedBy  User?        @relation("PaymentReceiver", fields: [receivedById], references: [id], onDelete: SetNull)
   membership  Membership?  @relation(fields: [membershipId], references: [id], onDelete: SetNull)
   ticketOrder TicketOrder? @relation(fields: [ticketOrderId], references: [id], onDelete: SetNull)
+  merchOrder  MerchOrder?  @relation(fields: [merchOrderId], references: [id], onDelete: SetNull)
 
   @@index([purpose, paidAt])
   @@index([payerId])
@@ -568,4 +576,178 @@ model EventIncident {
   reportedBy User? @relation("IncidentReporter", fields: [reportedById], references: [id], onDelete: SetNull)
 
   @@index([eventId, resolvedAt])
+}
+
+// ─── Uploads (shared) ────────────────────────────────────────────────────────
+
+/// Files stored on the local disk (storage/uploads), served through a permission-checked route.
+model Upload {
+  id           String   @id @default(cuid())
+  purpose      String // "merch_logo" | "receipt"
+  filename     String
+  mimeType     String
+  sizeBytes    Int
+  path         String
+  uploadedById String?
+  createdAt    DateTime @default(now())
+
+  uploadedBy User?         @relation(fields: [uploadedById], references: [id], onDelete: SetNull)
+  designs    MerchDesign[]
+}
+
+// ─── Merchandise (Phase 5) ───────────────────────────────────────────────────
+
+enum ProductStatus {
+  DRAFT
+  ACTIVE
+  ARCHIVED
+}
+
+model Product {
+  id               String        @id @default(cuid())
+  name             String        @unique
+  category         String // Hoodie, T-shirt, Cap, Tote, Mug…
+  description      String?
+  publicPricePaise Int
+  /// Members' price (the "15% off merchandise" benefit), editable per product.
+  memberPricePaise Int
+  unitCostPaise    Int           @default(0)
+  status           ProductStatus @default(DRAFT)
+  designId         String?       @unique
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+
+  variants ProductVariant[]
+  design   MerchDesign?     @relation(fields: [designId], references: [id], onDelete: SetNull)
+}
+
+model ProductVariant {
+  id           String   @id @default(cuid())
+  productId    String
+  sku          String   @unique
+  size         String
+  color        String
+  colorHex     String   @default("#111827")
+  stock        Int      @default(0)
+  reorderLevel Int      @default(5)
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+
+  product   Product          @relation(fields: [productId], references: [id], onDelete: Cascade)
+  items     MerchOrderItem[]
+  movements StockMovement[]
+
+  @@unique([productId, size, color])
+}
+
+enum MerchOrderStatus {
+  PENDING_PAYMENT
+  PAID
+  FULFILLED
+  CANCELLED
+  REFUNDED
+}
+
+model MerchOrder {
+  id               String           @id @default(cuid())
+  orderNumber      String           @unique
+  buyerId          String?
+  buyerName        String
+  buyerPhone       String?
+  status           MerchOrderStatus @default(PENDING_PAYMENT)
+  channel          SalesChannel     @default(ONLINE)
+  totalPaise       Int
+  claimedReference String?
+  holdUntil        DateTime?
+  fulfilledAt      DateTime?
+  fulfilledById    String?
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+
+  buyer       User?            @relation("MerchBuyer", fields: [buyerId], references: [id], onDelete: SetNull)
+  fulfilledBy User?            @relation("MerchFulfiller", fields: [fulfilledById], references: [id], onDelete: SetNull)
+  items       MerchOrderItem[]
+  payment     Payment?
+
+  @@index([status, createdAt])
+  @@index([buyerId])
+}
+
+model MerchOrderItem {
+  id             String  @id @default(cuid())
+  orderId        String
+  variantId      String
+  quantity       Int
+  unitPricePaise Int
+  isMemberPrice  Boolean @default(false)
+
+  order   MerchOrder     @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  variant ProductVariant @relation(fields: [variantId], references: [id])
+
+  @@index([variantId])
+}
+
+enum StockReason {
+  RESTOCK
+  SALE
+  RELEASE
+  ADJUSTMENT
+  DAMAGED
+}
+
+/// Every stock change, so inventory can always be explained ("30 → 29, sale MRC-2026-00042").
+model StockMovement {
+  id         String      @id @default(cuid())
+  variantId  String
+  change     Int
+  stockAfter Int
+  reason     StockReason
+  note       String?
+  orderId    String?
+  actorId    String?
+  createdAt  DateTime    @default(now())
+
+  variant ProductVariant @relation(fields: [variantId], references: [id], onDelete: Cascade)
+  actor   User?          @relation(fields: [actorId], references: [id], onDelete: SetNull)
+
+  @@index([variantId, createdAt])
+}
+
+enum DesignStatus {
+  DRAFT
+  IN_REVIEW
+  APPROVED
+  REJECTED
+}
+
+/// Merch Studio concept: a visual preview for deciding next year's merch.
+/// A preview, not a manufacturing spec.
+model MerchDesign {
+  id                 String       @id @default(cuid())
+  name               String
+  productType        String // hoodie | tshirt | cap | tote | mug
+  baseColor          String
+  inkColor           String       @default("#ffffff")
+  frontText          String?
+  backText           String?
+  /// Print artwork as sanitized SVG markup (AI-generated or from the offline template designer).
+  artworkSvg         String?
+  artworkSource      String? // "ai" | "template" | "upload"
+  aiPrompt           String?
+  logoUploadId       String?
+  sizes              String[]
+  estimatedCostPaise Int          @default(0)
+  sellingPricePaise  Int          @default(0)
+  status             DesignStatus @default(DRAFT)
+  reviewNote         String?
+  createdById        String?
+  reviewedById       String?
+  reviewedAt         DateTime?
+  createdAt          DateTime     @default(now())
+  updatedAt          DateTime     @updatedAt
+
+  logo       Upload?  @relation(fields: [logoUploadId], references: [id], onDelete: SetNull)
+  createdBy  User?    @relation("DesignCreator", fields: [createdById], references: [id], onDelete: SetNull)
+  reviewedBy User?    @relation("DesignReviewer", fields: [reviewedById], references: [id], onDelete: SetNull)
+  product    Product?
 }

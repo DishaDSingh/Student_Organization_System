@@ -12,3 +12,6 @@ export const pageParam = (v: string | string[] | undefined) => Math.max(1, Numbe
 /** "1 person", "3 people"; "1 permission", "16 permissions". */
 export const people = (n: number) => `${n.toLocaleString("en-IN")} ${n === 1 ? "person" : "people"}`;
 export const plural = (n: number, word: string) => `${n.toLocaleString("en-IN")} ${word}${n === 1 ? "" : "s"}`;
+
+/** A moment `n` days before now (kept out of components so render stays pure). */
+export const daysAgo = (n: number) => new Date(Date.now() - n * 86_400_000);

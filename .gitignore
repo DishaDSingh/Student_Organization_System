@@ -49,3 +49,6 @@ next-env.d.ts
 /.windsurf
 /.claude/skills
 skills-lock.json
+
+# local file uploads
+/storage

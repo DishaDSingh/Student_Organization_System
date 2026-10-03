@@ -3,6 +3,7 @@ import { PrismaClient } from "@/generated/prisma/client";
 import { syncPermissionCatalog } from "@/lib/rbac/sync";
 import { runRenewalReminders } from "@/lib/membership/reminders";
 import { releaseExpiredHolds } from "@/lib/events/service";
+import { releaseExpiredMerchHolds } from "@/lib/merch/service";
 
 /**
  * Local background jobs — no cloud scheduler needed.
@@ -18,6 +19,8 @@ async function tick(db: PrismaClient) {
     if (sent) console.log(`[jobs] sent ${sent} renewal reminder(s)`);
     const released = await releaseExpiredHolds(db);
     if (released) console.log(`[jobs] released seats from ${released} unpaid order(s)`);
+    const merch = await releaseExpiredMerchHolds(db);
+    if (merch) console.log(`[jobs] returned stock from ${merch} unpaid merch order(s)`);
   } catch (e) {
     console.error("[jobs] background tick failed", e);
   }
