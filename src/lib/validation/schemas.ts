@@ -629,3 +629,15 @@ export const reviewExpenseSchema = z
   .refine((v) => v.decision === "APPROVE" || !!v.note, { path: ["note"], message: "Tell them why it was rejected" });
 
 export const scanReceiptSchema = z.object({ uploadId: id });
+
+// ─── Analytics (Phase 9) ─────────────────────────────────────────────────────
+
+export const budgetSchema = z.object({
+  category: z.enum(EXPENSE_CATEGORY_VALUES, { error: "Choose a category" }),
+  // 0 removes the budget.
+  monthlyRupees: z.coerce
+    .number({ error: "Enter an amount" })
+    .int("Whole rupees only")
+    .min(0, "Can't be negative")
+    .max(10_000_000, "That's more than ₹1 crore a month"),
+});

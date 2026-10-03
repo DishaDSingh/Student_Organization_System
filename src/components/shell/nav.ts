@@ -13,6 +13,7 @@ import {
   UserRoundCheckIcon,
   HistoryIcon,
   LayoutDashboardIcon,
+  ChartColumnIcon,
   type LucideIcon,
   NetworkIcon,
   ShieldCheckIcon,
@@ -40,7 +41,16 @@ export type NavGroup = { label: string; items: NavItem[] };
 export const NAV: NavGroup[] = [
   {
     label: "Overview",
-    items: [{ href: "/dashboard", label: "Dashboard", icon: LayoutDashboardIcon, keywords: "home overview" }],
+    items: [
+      { href: "/dashboard", label: "Dashboard", icon: LayoutDashboardIcon, keywords: "home overview" },
+      {
+        href: "/analytics",
+        label: "Analytics",
+        icon: ChartColumnIcon,
+        anyOf: ["analytics.view"],
+        keywords: "charts trends growth reports stats",
+      },
+    ],
   },
   {
     label: "Operate",
