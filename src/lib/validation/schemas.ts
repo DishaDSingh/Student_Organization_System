@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { ALL_PERMISSION_KEYS, type PermissionKey } from "@/lib/rbac/catalog";
 import { ROLE_COLORS } from "@/lib/rbac/presets";
+import { EXPENSE_CATEGORIES } from "@/lib/finance/rules";
 import {
   dateInput,
   email,
@@ -590,3 +591,41 @@ export const donationSchema = z
     message: "Enter the donor's name, pick a member, or mark anonymous",
   })
   .refine((v) => v.method === "CASH" || !!v.reference, { path: ["reference"], message: "Enter the transaction reference" });
+
+// ─── Finance (Phases 7–8) ────────────────────────────────────────────────────
+
+const EXPENSE_CATEGORY_VALUES = EXPENSE_CATEGORIES;
+
+const expenseAmount = z.coerce
+  .number({ error: "Enter an amount" })
+  .min(1, "At least ₹1")
+  .max(500_000, "Over ₹5 lakh — needs a board resolution, not a claim");
+
+export const expenseSchema = z
+  .object({
+    description: z.string().trim().min(3, "Say what it was for").max(160),
+    category: z.enum(EXPENSE_CATEGORY_VALUES, { error: "Choose a category" }),
+    vendor: optionalText(80, "Shop / vendor"),
+    amountRupees: expenseAmount,
+    taxRupees: z.preprocess((v) => (v === "" || v == null ? 0 : v), z.coerce.number().min(0, "Can't be negative")),
+    spentAt: dateInput.refine((d) => d.getTime() <= Date.now() + 86_400_000, "Can't be in the future"),
+    needsReimbursement: z.boolean().default(false),
+    eventId: optionalId,
+    fundraiserId: optionalId,
+    receiptUploadId: optionalId,
+    source: z.enum(["manual", "scan"]).default("manual"),
+  })
+  .refine((v) => v.taxRupees <= v.amountRupees, { path: ["taxRupees"], message: "Tax can't be more than the total" });
+
+export const reviewExpenseSchema = z
+  .object({
+    expenseId: id,
+    decision: z.enum(["APPROVE", "REJECT"]),
+    // The treasurer may correct the amount or category while approving.
+    amountRupees: expenseAmount.optional(),
+    category: z.enum(EXPENSE_CATEGORY_VALUES).optional(),
+    note: optionalText(300, "Note"),
+  })
+  .refine((v) => v.decision === "APPROVE" || !!v.note, { path: ["note"], message: "Tell them why it was rejected" });
+
+export const scanReceiptSchema = z.object({ uploadId: id });

@@ -24,43 +24,58 @@ export default async function DashboardPage() {
   const now = daysAgo(0);
   const p = (k: PermissionKey) => can(user, k);
 
-  const [members, myTerms, myTasks, pendingTickets, pendingMerch, lowStock, overdueTasks, openIncidents, nextEvent, moneyIn, recent] =
-    await Promise.all([
-      p("members.view") ? membershipCounts() : null,
-      db.membership.findMany({
-        where: { userId: user.id },
-        select: { status: true, startDate: true, endDate: true, plan: { select: { name: true } } },
-      }),
-      db.task.count({ where: { assigneeId: user.id, status: { not: "DONE" } } }),
-      p("tickets.sell") || p("finance.record_income")
-        ? db.ticketOrder.count({ where: { status: "PENDING_PAYMENT", claimedReference: { not: null } } })
-        : null,
-      p("merchandise.manage_orders") ? db.merchOrder.count({ where: { status: { in: ["PENDING_PAYMENT", "PAID"] } } }) : null,
-      p("merchandise.manage_inventory")
-        ? db.productVariant.count({
-            where: { isActive: true, product: { status: "ACTIVE" }, stock: { lte: db.productVariant.fields.reorderLevel } },
-          })
-        : null,
-      p("fundraisers.manage") || p("volunteers.assign_tasks")
-        ? db.task.count({ where: { status: { not: "DONE" }, dueAt: { lt: now } } })
-        : null,
-      p("events.view") ? db.eventIncident.count({ where: { resolvedAt: null, event: { endsAt: { gte: daysAgo(1) } } } }) : null,
-      db.event.findFirst({
-        where: { status: "PUBLISHED", endsAt: { gte: now } },
-        orderBy: { startsAt: "asc" },
-        select: { id: true, title: true, startsAt: true },
-      }),
-      p("members.view") || p("finance.view")
-        ? db.payment.aggregate({ where: { status: "PAID", paidAt: { gte: daysAgo(30) } }, _sum: { amountPaise: true } })
-        : null,
-      p("audit.view")
-        ? db.auditLog.findMany({
-            orderBy: { createdAt: "desc" },
-            take: 6,
-            select: { id: true, summary: true, actorName: true, createdAt: true },
-          })
-        : null,
-    ]);
+  const [
+    members,
+    myTerms,
+    myTasks,
+    pendingTickets,
+    pendingMerch,
+    lowStock,
+    overdueTasks,
+    openIncidents,
+    nextEvent,
+    moneyIn,
+    recent,
+    expensesToReview,
+    toPayBack,
+  ] = await Promise.all([
+    p("members.view") ? membershipCounts() : null,
+    db.membership.findMany({
+      where: { userId: user.id },
+      select: { status: true, startDate: true, endDate: true, plan: { select: { name: true } } },
+    }),
+    db.task.count({ where: { assigneeId: user.id, status: { not: "DONE" } } }),
+    p("tickets.sell") || p("finance.record_income")
+      ? db.ticketOrder.count({ where: { status: "PENDING_PAYMENT", claimedReference: { not: null } } })
+      : null,
+    p("merchandise.manage_orders") ? db.merchOrder.count({ where: { status: { in: ["PENDING_PAYMENT", "PAID"] } } }) : null,
+    p("merchandise.manage_inventory")
+      ? db.productVariant.count({
+          where: { isActive: true, product: { status: "ACTIVE" }, stock: { lte: db.productVariant.fields.reorderLevel } },
+        })
+      : null,
+    p("fundraisers.manage") || p("volunteers.assign_tasks")
+      ? db.task.count({ where: { status: { not: "DONE" }, dueAt: { lt: now } } })
+      : null,
+    p("events.view") ? db.eventIncident.count({ where: { resolvedAt: null, event: { endsAt: { gte: daysAgo(1) } } } }) : null,
+    db.event.findFirst({
+      where: { status: "PUBLISHED", endsAt: { gte: now } },
+      orderBy: { startsAt: "asc" },
+      select: { id: true, title: true, startsAt: true },
+    }),
+    p("members.view") || p("finance.view")
+      ? db.payment.aggregate({ where: { status: "PAID", paidAt: { gte: daysAgo(30) } }, _sum: { amountPaise: true } })
+      : null,
+    p("audit.view")
+      ? db.auditLog.findMany({
+          orderBy: { createdAt: "desc" },
+          take: 6,
+          select: { id: true, summary: true, actorName: true, createdAt: true },
+        })
+      : null,
+    p("finance.approve_expense") ? db.expense.count({ where: { status: "PENDING", submittedById: { not: user.id } } }) : null,
+    p("finance.approve_expense") ? db.expense.count({ where: { status: "APPROVED", needsReimbursement: true } }) : null,
+  ]);
   const mine = standing(myTerms);
 
   // Every item is a link, and only appears if you can act on it.
@@ -69,6 +84,8 @@ export default async function DashboardPage() {
     members?.pending && (p("members.edit") || p("finance.record_income"))
       ? { label: "Membership payments to confirm", count: members.pending, href: "/members?state=pending" }
       : null,
+    expensesToReview ? { label: "Expenses to approve", count: expensesToReview, href: "/finance?tab=expenses" } : null,
+    toPayBack ? { label: "People to pay back", count: toPayBack, href: "/finance?tab=expenses&status=OWED" } : null,
     pendingTickets ? { label: "Ticket payments to check", count: pendingTickets, href: "/events" } : null,
     pendingMerch ? { label: "Merch orders to handle", count: pendingMerch, href: "/merch/orders" } : null,
     members?.expiringThisWeek
@@ -81,7 +98,11 @@ export default async function DashboardPage() {
 
   const stats = [
     members && { label: "Active members", value: members.active.toLocaleString("en-IN"), href: "/members?state=active" },
-    moneyIn && { label: "Money in (30 days)", value: formatINR(moneyIn._sum.amountPaise ?? 0), href: "/members" },
+    moneyIn && {
+      label: "Money in (30 days)",
+      value: formatINR(moneyIn._sum.amountPaise ?? 0),
+      href: p("finance.view") ? "/finance" : "/members",
+    },
     nextEvent && { label: "Next event", value: nextEvent.title, sub: fmtDate(nextEvent.startsAt), href: `/events/${nextEvent.id}` },
     {
       label: "Your membership",
