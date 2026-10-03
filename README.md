@@ -4,7 +4,7 @@
 finance in one place, with role-based access, a full audit trail and (in later phases) an AI layer that explains its
 reasoning.
 
-> Built phase by phase. Complete: **Phases 1–2** (Master Admin, organization setup, role & permission engine) and **Phase 3** (membership, dues, renewals and the digital member pass).
+> Built phase by phase. Complete: **Phases 1–2** (Master Admin, organization setup, role & permission engine) **Phase 3** (membership, dues, renewals, digital pass) and **Phase 4** (events, tickets, check-in, live command center).
 
 ---
 
@@ -17,7 +17,8 @@ npm install                 # also generates the Prisma client
 cp .env.example .env        # then set AUTH_SECRET (command is in the file)
 npm run db:up               # local PostgreSQL 17 on port 5433
 npm run db:migrate          # create tables
-npm run db:seed             # demo dataset (~430 people, 400+ members, 600+ payments, audit history)
+npm run db:seed             # small demo dataset (~50–60 rows per category, ~10 s)
+# npm run db:seed:full      # large dataset for the final demo (~430 people, 8,000+ tickets)
 npm run dev                 # http://localhost:3000
 ```
 
@@ -38,24 +39,27 @@ All seeded accounts share the password defined as `DEMO_PASSWORD` in [`prisma/se
 
 Other personas: `vp@`, `volunteers@`, `merch@`, `comms@`, `deputy.events@`, `fundraising@` (all `@horizon.test`).
 
-Membership stories baked into the data: **42 members expire within 7 days**, 14 sign-ups are waiting for payment
+Stories baked into the data (numbers for the full dataset): **42 members expire within 7 days**, 14 sign-ups are waiting for payment
 confirmation (most with a UPI reference to check), and 48 lapsed members never renewed. Every seeded member's
-standing is visible on **/members**; regular members see their own pass at **/me/pass**.
+standing is visible on **/members**; regular members see their own pass at **/me/pass**. **Diwali Gala Night 2026** (in
+~5 weeks) has ticket sales that started strong and then slowed, and the **Freshers' Welcome Mixer** is live today, so the
+command center shows real arrivals.
 
 ---
 
 ## Scripts
 
-| Command              | What it does                                         |
-| -------------------- | ---------------------------------------------------- |
-| `npm run dev`        | Start the app with hot reload                        |
-| `npm run check`      | Type-check + lint + unit tests (run before every PR) |
-| `npm run test`       | Unit tests (Vitest)                                  |
-| `npm run format`     | Format with Prettier                                 |
-| `npm run db:up`      | Start local Postgres (Docker)                        |
-| `npm run db:migrate` | Apply / create migrations                            |
-| `npm run db:seed`    | Wipe and rebuild the demo dataset (deterministic)    |
-| `npm run db:studio`  | Browse the database in Prisma Studio                 |
+| Command                | What it does                                            |
+| ---------------------- | ------------------------------------------------------- |
+| `npm run dev`          | Start the app with hot reload                           |
+| `npm run check`        | Type-check + lint + unit tests (run before every PR)    |
+| `npm run test`         | Unit tests (Vitest)                                     |
+| `npm run format`       | Format with Prettier                                    |
+| `npm run db:up`        | Start local Postgres (Docker)                           |
+| `npm run db:migrate`   | Apply / create migrations                               |
+| `npm run db:seed`      | Wipe and rebuild the small demo dataset (deterministic) |
+| `npm run db:seed:full` | Same, with the large demo dataset                       |
+| `npm run db:studio`    | Browse the database in Prisma Studio                    |
 
 ---
 
@@ -86,6 +90,14 @@ Each phase lists only what it **adds**. Nothing is added unless it earns its pla
 | **UPI deep links** (`upi://`)            | Members pay the exact dues from any UPI app; no payment gateway or fees needed         |
 | **Next.js `instrumentation`**            | Runs local background jobs (renewal reminders every 6 h) without a cloud scheduler     |
 | **Short polling** (`/api/notifications`) | Notification bell stays current (30 s + on focus) with zero extra infrastructure       |
+
+### Phase 4 · Events, tickets & command center
+
+| Adds                                            | Why                                                                                               |
+| ----------------------------------------------- | ------------------------------------------------------------------------------------------------- |
+| **Server-Sent Events** (`/api/events/:id/live`) | Live command center and door counters, pushed every 3 s — no WebSocket server needed              |
+| **Atomic SQL counters**                         | `UPDATE … WHERE allocated + n <= quantity` reserves seats, so the last ticket can't be sold twice |
+| Shared **jsQR** scanner                         | Same offline camera scanner for passes and tickets; continuous mode for busy doors                |
 
 ---
 
@@ -129,6 +141,18 @@ Each phase lists only what it **adds**. Nothing is added unless it earns its pla
   dedupe keys. Staff can also trigger them manually.
 - New permission **`members.manage_plans`** (Treasurer, Secretary). Recording dues needs `members.edit` or
   `finance.record_income`.
+
+**Phase 4 — Events & tickets**
+
+- Events with venue, schedule, capacity, sales window, organizer and committee; draft → publish → (cancel) lifecycle.
+- Ticket types with **member and non-member prices**, inventory, per-order limits and members-only types. An active
+  member gets member pricing on **one ticket per event** (their own); extra tickets are charged the public price.
+- **Online sales** (seats held 48 h; pay by UPI QR or at the desk; free events confirm instantly) and **door sales**.
+- **QR tickets** in _My tickets_; door **check-in** with a continuous scanner — each ticket admits once, and a second
+  scan shows "already checked in at 19:42 via …".
+- Attendance, no-shows, revenue and refunds per event; cancelling an event voids unpaid orders and notifies holders.
+- **Event Command Center**: tickets sold, people inside, revenue, arrivals per 10 minutes, latest check-ins and
+  timestamped incidents — streamed live.
 
 **Cross-cutting**
 
