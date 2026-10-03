@@ -40,21 +40,19 @@ export async function seedSecurity(db: Db) {
   const viewers = [security, eventHead].filter((v): v is { id: string; name: string } => !!v);
   const ua = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0 Safari/537.36";
   await db.cameraAccess.createMany({
-    data: cams
-      .slice(0, 5)
-      .flatMap((c, i) =>
-        viewers
-          .filter((v) => v === security || c.eventId)
-          .map((v, j) => ({
-            cameraId: c.id,
-            userId: v.id,
-            userName: v.name,
-            kind: "LIVE",
-            ip: `10.0.0.${20 + i + j}`,
-            userAgent: ua,
-            createdAt: daysAgo(2 + i),
-          })),
-      ),
+    data: cams.slice(0, 5).flatMap((c, i) =>
+      viewers
+        .filter((v) => v === security || c.eventId)
+        .map((v, j) => ({
+          cameraId: c.id,
+          userId: v.id,
+          userName: v.name,
+          kind: "LIVE",
+          ip: `10.0.0.${20 + i + j}`,
+          userAgent: ua,
+          createdAt: daysAgo(2 + i),
+        })),
+    ),
   });
   return { cameras: cams.length, eventCameras: cams.filter((c) => c.eventId).length };
 }

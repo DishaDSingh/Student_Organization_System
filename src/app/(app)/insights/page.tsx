@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { ArrowRightIcon, CircleCheckIcon, LightbulbIcon } from "lucide-react";
-import { requirePermission } from "@/lib/auth/current-user";
+import { ArrowRightIcon, CircleCheckIcon, LightbulbIcon, MegaphoneIcon } from "lucide-react";
+import { can, requirePermission } from "@/lib/auth/current-user";
 import { EmptyState, PageHeader } from "@/components/common";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -92,7 +92,7 @@ export default async function InsightsPage(props: PageProps<"/insights">) {
       ) : (
         <ul className="grid gap-3">
           {shown.map((i) => (
-            <InsightCard key={i.id} insight={i} />
+            <InsightCard key={i.id} insight={i} canDraft={can(user, "announcements.create")} />
           ))}
         </ul>
       )}
@@ -100,7 +100,7 @@ export default async function InsightsPage(props: PageProps<"/insights">) {
   );
 }
 
-function InsightCard({ insight: i }: { insight: Insight }) {
+function InsightCard({ insight: i, canDraft }: { insight: Insight; canDraft: boolean }) {
   return (
     <li className="bg-card rounded-xl border p-4 sm:p-5">
       <div className="flex flex-wrap items-start gap-x-4 gap-y-3">
@@ -120,13 +120,22 @@ function InsightCard({ insight: i }: { insight: Insight }) {
             </span>
           </p>
         </div>
-        {i.action && (
-          <Button asChild variant="outline" size="sm">
-            <Link href={i.action.href}>
-              {i.action.label} <ArrowRightIcon />
-            </Link>
-          </Button>
-        )}
+        <div className="flex flex-wrap gap-2">
+          {i.draft && canDraft && (
+            <Button asChild variant="ghost" size="sm">
+              <Link href={`/announcements/new?audience=${i.draft.audience}&brief=${encodeURIComponent(i.draft.brief)}`}>
+                <MegaphoneIcon /> {i.draft.label}
+              </Link>
+            </Button>
+          )}
+          {i.action && (
+            <Button asChild variant="outline" size="sm">
+              <Link href={i.action.href}>
+                {i.action.label} <ArrowRightIcon />
+              </Link>
+            </Button>
+          )}
+        </div>
       </div>
       <details className="group mt-3">
         <summary className="text-primary cursor-pointer text-sm select-none hover:underline">Show evidence</summary>

@@ -26,6 +26,8 @@ export type Insight = {
   why: string;
   evidence: { columns: string[]; rows: string[][]; more?: number };
   action?: { label: string; href: string };
+  /** A suggested announcement — opens a draft for a person to review; never sent automatically. */
+  draft?: { label: string; brief: string; audience: "MEMBERS" | "EXPIRING" | "VOLUNTEERS" | "ALL" };
 };
 
 /**

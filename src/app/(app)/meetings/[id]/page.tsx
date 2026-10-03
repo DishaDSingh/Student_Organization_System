@@ -1,9 +1,10 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { CheckCircle2Icon } from "lucide-react";
 import { db } from "@/lib/db";
 import { can, requirePermission } from "@/lib/auth/current-user";
+import { seesCommitteeItems } from "@/lib/calendar/load";
 import { PageHeader, Section } from "@/components/common";
 import { fmtDate, fmtDateTime } from "@/lib/format";
 import type { Extracted } from "@/lib/meetings/extract";
@@ -15,6 +16,8 @@ type Stored = Extracted & { actions: (Extracted["actions"][number] & { ownerId?:
 
 export default async function MeetingPage(props: PageProps<"/meetings/[id]">) {
   const user = await requirePermission("calendar.view");
+  // Meeting notes are committee business, not for every member.
+  if (!(await seesCommitteeItems(user))) redirect("/forbidden");
   const { id } = await props.params;
   const m = await db.meeting.findUnique({
     where: { id },

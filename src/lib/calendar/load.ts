@@ -9,8 +9,15 @@ import type { CalItem } from "./grid";
  * One calendar for everything dated in the app. Each source is only included
  * if the user can see that area — the calendar never leaks data.
  */
+/** Meetings and internal deadlines are committee business: calendar managers and committee members. */
+export async function seesCommitteeItems(user: CurrentUser) {
+  if (user.isMasterAdmin || user.permissions.has("calendar.manage") || user.permissions.has("committees.view")) return true;
+  return (await db.committeeMember.count({ where: { userId: user.id } })) > 0;
+}
+
 export async function loadCalendar(user: CurrentUser, from: Date, to: Date): Promise<CalItem[]> {
   const can = (p: PermissionKey) => user.permissions.has(p);
+  const committee = can("calendar.view") && (await seesCommitteeItems(user));
   const time = (d: Date) => d.toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit", hour12: false });
   const range = { gte: from, lt: to };
 
@@ -22,8 +29,8 @@ export async function loadCalendar(user: CurrentUser, from: Date, to: Date): Pro
     can("events.view")
       ? db.event.findMany({ where: { salesCloseAt: range, status: "PUBLISHED" }, select: { id: true, title: true, salesCloseAt: true } })
       : [],
-    can("calendar.view") ? db.meeting.findMany({ where: { heldAt: range }, select: { id: true, title: true, heldAt: true } }) : [],
-    can("calendar.view")
+    committee ? db.meeting.findMany({ where: { heldAt: range }, select: { id: true, title: true, heldAt: true } }) : [],
+    committee
       ? db.calendarEntry.findMany({
           where: { startsAt: range },
           select: { id: true, title: true, startsAt: true, kind: true, notes: true },
