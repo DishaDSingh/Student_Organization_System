@@ -4,7 +4,7 @@
 finance in one place, with role-based access, a full audit trail and (in later phases) an AI layer that explains its
 reasoning.
 
-> Built phase by phase. Complete: **Phases 1–2** (Master Admin, organization setup, role & permission engine) **Phase 3** (membership, dues, renewals, digital pass) **Phase 4** (events, tickets, check-in, live command center) **Phase 5** (merchandise, inventory, AI Merch Studio), **Phase 6** (fundraisers, tasks, volunteer matching) and **Phases 7–8** (finance, expenses, AI receipt scanner).
+> Built phase by phase. Complete: **Phases 1–2** (Master Admin, organization setup, role & permission engine) **Phase 3** (membership, dues, renewals, digital pass) **Phase 4** (events, tickets, check-in, live command center) **Phase 5** (merchandise, inventory, AI Merch Studio), **Phase 6** (fundraisers, tasks, volunteer matching) **Phases 7–8** (finance, expenses, AI receipt scanner) and **Phase 9** (analytics engine).
 
 ---
 
@@ -125,6 +125,15 @@ Each phase lists only what it **adds**. Nothing is added unless it earns its pla
 | **Four-eyes approval**                 | Nobody approves their own claim; a still-pending check in the UPDATE stops two treasurers both deciding     |
 | **Claude vision** (structured outputs) | Reads a receipt photo or PDF into shop, date, total, GST and category — it fills the form, a person submits |
 | **Offline receipt reader**             | No key or no internet? Paste the receipt text (phone cameras can copy it) and a local parser fills the form |
+
+### Phase 9 · Analytics engine
+
+| Adds                                                | Why                                                                                                            |
+| --------------------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
+| **Pure analytics maths** (`lib/analytics/rules.ts`) | Month series, period-over-period change, least-squares trend (only reported when R² ≥ 0.5) — all unit-tested   |
+| **Like-for-like comparisons**                       | The previous period is cut at the same point as today, so a half-finished month isn't compared with a full one |
+| **Server-rendered SVG charts**                      | No chart library or client JS — instant, offline, themed, with hover values                                    |
+| **Monthly budgets**                                 | One limit per spending category; the Finance tab shows how much of each is used this month                     |
 
 ### Keeping it simple
 

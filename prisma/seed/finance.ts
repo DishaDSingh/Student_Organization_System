@@ -1,5 +1,5 @@
 import type { Prisma } from "../../src/generated/prisma/client";
-import { DAY, between, bySize, daysAgo, faker, type Db } from "./shared";
+import { DAY, TODAY, between, bySize, daysAgo, faker, type Db } from "./shared";
 
 /**
  * Phase 7–8 seed: expenses and reimbursement claims.
@@ -175,7 +175,32 @@ export async function seedFinance(db: Db) {
     }
   }
 
+  // Phase 9 story: the food budget is nearly used up this month.
+  const yesterday = new Date(Math.max(new Date(TODAY.getFullYear(), TODAY.getMonth(), 1).getTime(), daysAgo(1).getTime()));
+  rows.push({
+    description: "Tea & snacks for the committee meeting",
+    category: "Food & refreshments",
+    vendor: "Café Coffee Day",
+    amountPaise: 190_000,
+    spentAt: yesterday,
+    status: "APPROVED",
+    submittedById: submitters[1].id,
+    reviewedById: treasurer.id,
+    reviewedAt: yesterday,
+    createdAt: yesterday,
+  });
+
   await db.expense.createMany({ data: rows });
+
+  await db.budget.createMany({
+    data: [
+      { category: "Food & refreshments", monthlyPaise: 200_000 },
+      { category: "Printing & stationery", monthlyPaise: 500_000 },
+      { category: "Event costs", monthlyPaise: 4_000_000 },
+      { category: "Decorations", monthlyPaise: 500_000 },
+      { category: "Travel", monthlyPaise: 300_000 },
+    ].map((b) => ({ ...b, updatedById: treasurer.id })),
+  });
 
   const reviewed = rows.filter((r) => r.reviewedAt).slice(0, 40);
   await db.auditLog.createMany({
