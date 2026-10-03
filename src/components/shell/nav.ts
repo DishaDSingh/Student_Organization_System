@@ -15,6 +15,7 @@ import {
   LayoutDashboardIcon,
   ChartColumnIcon,
   LightbulbIcon,
+  FileTextIcon,
   MessageCircleQuestionIcon,
   type LucideIcon,
   NetworkIcon,
@@ -45,13 +46,6 @@ export const NAV: NavGroup[] = [
     label: "Overview",
     items: [
       { href: "/dashboard", label: "Dashboard", icon: LayoutDashboardIcon, keywords: "home overview" },
-      {
-        href: "/analytics",
-        label: "Analytics",
-        icon: ChartColumnIcon,
-        anyOf: ["analytics.view"],
-        keywords: "charts trends growth reports stats",
-      },
       { href: "/insights", label: "Insights", icon: LightbulbIcon, anyOf: ["analytics.view"], keywords: "alerts pulse health warnings" },
       {
         href: "/copilot",
@@ -60,6 +54,8 @@ export const NAV: NavGroup[] = [
         anyOf: ["ai.use"],
         keywords: "chat copilot question assistant ai",
       },
+      { href: "/analytics", label: "Analytics", icon: ChartColumnIcon, anyOf: ["analytics.view"], keywords: "charts trends growth stats" },
+      { href: "/reports", label: "Reports", icon: FileTextIcon, anyOf: ["reports.view"], keywords: "summary handover annual export pdf" },
     ],
   },
   {

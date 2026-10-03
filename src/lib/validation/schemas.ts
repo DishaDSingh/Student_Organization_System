@@ -2,6 +2,7 @@ import { z } from "zod";
 import { ALL_PERMISSION_KEYS, type PermissionKey } from "@/lib/rbac/catalog";
 import { ROLE_COLORS } from "@/lib/rbac/presets";
 import { EXPENSE_CATEGORIES } from "@/lib/finance/rules";
+import { PERIOD_KEYS, REPORT_TYPE_KEYS } from "@/lib/reports/types";
 import {
   dateInput,
   email,
@@ -640,4 +641,30 @@ export const budgetSchema = z.object({
     .int("Whole rupees only")
     .min(0, "Can't be negative")
     .max(10_000_000, "That's more than ₹1 crore a month"),
+});
+
+// ─── Reports (Phases 12, 13, 20) ─────────────────────────────────────────────
+
+export const generateReportSchema = z
+  .object({
+    type: z.enum(REPORT_TYPE_KEYS as [string, ...string[]], { error: "Choose a report type" }),
+    subjectId: optionalId,
+    period: z.enum(PERIOD_KEYS as [string, ...string[]]).optional(),
+    useAi: z.boolean().default(true),
+  })
+  .refine((v) => !["EVENT", "FUNDRAISER"].includes(v.type) || !!v.subjectId, { path: ["subjectId"], message: "Choose which one" });
+
+export const saveReportSchema = z.object({
+  reportId: id,
+  title: z.string().trim().min(3, "Give it a title").max(140),
+  sections: z
+    .array(
+      z.object({
+        heading: z.string().trim().min(1, "Heading can't be empty").max(120),
+        body: z.string().max(8000, "This section is too long"),
+      }),
+    )
+    .min(1, "Keep at least one section")
+    .max(25),
+  status: z.enum(["DRAFT", "FINAL"]),
 });
