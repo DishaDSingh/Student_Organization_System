@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { NativeSelect } from "@/components/form/field";
 import { fmtDateTime, pageParam, param } from "@/lib/format";
 import { auditWhere } from "@/lib/audit-query";
+import { deviceLabel } from "@/lib/device";
 
 export const metadata: Metadata = { title: "Audit log" };
 const PAGE_SIZE = 30;
@@ -89,6 +90,7 @@ export default async function AuditPage(props: PageProps<"/admin/audit">) {
                       </Link>
                       <span className="font-mono">{l.action}</span>
                       {l.ip && <span>IP {l.ip}</span>}
+                      {l.userAgent && <span>{deviceLabel(l.userAgent)}</span>}
                     </p>
                     {hasDiff && (
                       <details className="group mt-2">

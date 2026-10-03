@@ -475,6 +475,7 @@ model Event {
   incidents   EventIncident[]
   expenses    Expense[]
   memories    MemoryItem[]
+  cameras     Camera[]
   fundraisers Fundraiser[]
   tasks       Task[]
 
@@ -1006,4 +1007,44 @@ model MemoryItem {
   createdBy User?  @relation("MemoryCreator", fields: [createdById], references: [id], onDelete: SetNull)
 
   @@index([kind, happenedAt])
+}
+
+// ─── CCTV / event security (Phase 15) ────────────────────────────────────────
+// No facial recognition, no person tracking. Cameras are only listed, watched
+// and annotated; every view is logged.
+
+model Camera {
+  id            String   @id @default(cuid())
+  name          String
+  location      String
+  /// Live feed URL (MJPEG/JPEG snapshot, MP4 or HLS) — optional; demo cameras have none.
+  streamUrl     String?
+  /// Recorded footage URL, where the recorder supports it.
+  playbackUrl   String?
+  eventId       String?
+  /// Footage older than this should be deleted by the recorder; shown as policy.
+  retentionDays Int      @default(30)
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  event    Event?         @relation(fields: [eventId], references: [id], onDelete: SetNull)
+  accesses CameraAccess[]
+
+  @@index([eventId])
+}
+
+model CameraAccess {
+  id        String   @id @default(cuid())
+  cameraId  String
+  userId    String?
+  userName  String
+  kind      String // LIVE | PLAYBACK
+  ip        String?
+  userAgent String?
+  createdAt DateTime @default(now())
+
+  camera Camera @relation(fields: [cameraId], references: [id], onDelete: Cascade)
+
+  @@index([cameraId, createdAt])
 }

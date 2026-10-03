@@ -28,9 +28,11 @@ describe("permission catalog", () => {
     for (const r of ROLE_PRESETS) for (const p of r.permissions) expect(isPermissionKey(p), `${r.key}: ${p}`).toBe(true);
   });
 
-  it("gives CCTV only to the Security Head preset", () => {
-    const withCctv = ROLE_PRESETS.filter((r) => r.permissions.some((p) => p.startsWith("cctv.")));
-    expect(withCctv.map((r) => r.key)).toEqual(["security_head"]);
+  it("follows the CCTV access matrix: Security Head live + playback, Event Head live (own events), nobody else", () => {
+    const cctv = Object.fromEntries(
+      ROLE_PRESETS.map((r) => [r.key, r.permissions.filter((p) => p.startsWith("cctv.")).sort()]).filter(([, p]) => p.length),
+    );
+    expect(cctv).toEqual({ security_head: ["cctv.live", "cctv.playback", "cctv.view"], event_head: ["cctv.live"] });
   });
 
   it("lets only the Treasurer preset approve expenses", () => {
