@@ -441,7 +441,9 @@ export async function seedEvents(db: Db) {
     const endsAt = new Date(startsAt.getTime() + spec.hours * 3600_000);
     const status = spec.status ?? "PUBLISHED";
     const salesOpenAt = spec.salesOpenDaysBefore ? new Date(startsAt.getTime() - spec.salesOpenDaysBefore * DAY) : null;
-    const organizer = faker.helpers.arrayElement(eventHeads);
+    const picked = faker.helpers.arrayElement(eventHeads); // always draw, so later random values don't shift
+    // The flagship Gala belongs to the Event Head persona (demo: their scoped camera view).
+    const organizer = spec.title === "Diwali Gala Night 2026" ? (users.find((u) => hasRole(u, "event_head")) ?? picked) : picked;
     // Never in the future: a draft planned for next year was still created in the past.
     const createdAt = new Date(
       Math.min(

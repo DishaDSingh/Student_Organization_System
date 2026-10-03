@@ -683,7 +683,11 @@ export const meetingSchema = z.object({
   title: z.string().trim().min(3, "At least 3 characters").max(120),
   heldAt: z.coerce.date({ error: "Pick a date and time" }),
   committeeId: optionalId,
-  notes: z.string().trim().min(20, "Paste the notes or transcript (at least a couple of lines)").max(60_000, "That's too long — paste up to ~60,000 characters"),
+  notes: z
+    .string()
+    .trim()
+    .min(20, "Paste the notes or transcript (at least a couple of lines)")
+    .max(60_000, "That's too long — paste up to ~60,000 characters"),
 });
 
 export const confirmMeetingSchema = z.object({
@@ -708,7 +712,13 @@ export const memoryItemSchema = z.object({
   title: z.string().trim().min(3, "At least 3 characters").max(140),
   body: z.string().trim().min(3, "Write a sentence or two").max(4000),
   tags: z.preprocess(
-    (v) => (typeof v === "string" ? v.split(",").map((t) => t.trim().toLowerCase()).filter(Boolean) : v),
+    (v) =>
+      typeof v === "string"
+        ? v
+            .split(",")
+            .map((t) => t.trim().toLowerCase())
+            .filter(Boolean)
+        : v,
     z.array(z.string().max(30)).max(10, "Up to 10 tags"),
   ),
   happenedAt: optionalDateInput,
@@ -717,3 +727,35 @@ export const memoryItemSchema = z.object({
 });
 
 export const askMemorySchema = z.object({ q: z.string().trim().min(2, "Ask a question").max(300) });
+
+// ─── CCTV (Phase 15) ─────────────────────────────────────────────────────────
+
+const httpUrl = z.preprocess(
+  (v) => (typeof v === "string" && v.trim() === "" ? undefined : v),
+  z
+    .string()
+    .trim()
+    .max(500)
+    .refine((u) => /^https?:\/\//i.test(u), "Must start with http:// or https://")
+    .optional(),
+);
+
+export const cameraSchema = z.object({
+  cameraId: optionalId,
+  name: z.string().trim().min(2, "Name the camera").max(80),
+  location: z.string().trim().min(2, "Where is it?").max(120),
+  streamUrl: httpUrl,
+  playbackUrl: httpUrl,
+  eventId: optionalId,
+  retentionDays: z.coerce.number().int("Whole days").min(1, "At least 1 day").max(90, "Keep footage at most 90 days"),
+  isActive: z.boolean().default(true),
+});
+
+export const cameraIncidentSchema = z.object({
+  cameraId: id,
+  title: z.string().trim().min(3, "Say what happened").max(120),
+  severity: z.enum(["LOW", "MEDIUM", "HIGH"]),
+  seenAt: z.coerce.date(),
+});
+
+export const cameraViewSchema = z.object({ cameraId: id, kind: z.enum(["LIVE", "PLAYBACK"]) });

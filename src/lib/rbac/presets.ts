@@ -3,8 +3,9 @@ import { allOf, type PermissionKey } from "./catalog";
 /**
  * Default roles created by the setup wizard and the seed.
  * They are starting points: the Master Admin can re-permission any of them
- * and add custom roles. Note what is *missing* — e.g. no preset except
- * Security Head gets CCTV, and only the Treasurer approves expenses.
+ * and add custom roles. Note what is *missing* — e.g. only the Security Head
+ * sees all cameras (Event Heads see live feeds of their own events' cameras),
+ * and only the Treasurer approves expenses.
  *
  * Self-service (a member seeing their own pass, tickets, orders) does not
  * need a permission; these keys cover acting on other people's data.
@@ -138,6 +139,8 @@ export const ROLE_PRESETS: RolePreset[] = [
       "announcements.view",
       "announcements.create",
       ...allOf("calendar"),
+      // Live view of cameras attached to events they organize (see lib/cctv).
+      "cctv.live",
       "reports.view",
       "reports.generate",
       "analytics.view",
@@ -180,7 +183,7 @@ export const ROLE_PRESETS: RolePreset[] = [
   {
     key: "security_head",
     name: "Security Head",
-    description: "Event security and CCTV. The only preset with camera access.",
+    description: "Event security and CCTV: every camera, live and playback.",
     color: "slate",
     rank: 85,
     permissions: ["cctv.view", "cctv.live", "cctv.playback", "events.view", "tickets.checkin", "calendar.view"],
