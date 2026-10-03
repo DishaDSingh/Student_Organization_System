@@ -3,7 +3,8 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { db } from "@/lib/db";
 import { can, requirePermission } from "@/lib/auth/current-user";
-import { MasterBadge, PageHeader, Section, StatusLabel } from "@/components/common";
+import { MasterBadge, PageHeader, PageTabs, Section, StatusLabel, activeTab } from "@/components/common";
+import { cn } from "@/lib/utils";
 import { fmtDate, fmtDateTime, fmtRelative } from "@/lib/format";
 import { PERMISSION_MODULES, ALL_PERMISSIONS } from "@/lib/rbac/catalog";
 import { ungrantable } from "@/lib/rbac/resolve";
@@ -15,6 +16,7 @@ export const metadata: Metadata = { title: "User" };
 export default async function UserDetailPage(props: PageProps<"/admin/users/[id]">) {
   const actor = await requirePermission("users.view");
   const { id } = await props.params;
+  const tab = activeTab(["profile", "access", "activity"] as const, (await props.searchParams).tab);
 
   const user = await db.user.findUnique({
     where: { id },
@@ -84,64 +86,82 @@ export default async function UserDetailPage(props: PageProps<"/admin/users/[id]
         }
       />
 
-      <div className="grid gap-6 xl:grid-cols-[1fr_24rem]">
-        <div className="grid min-w-0 content-start gap-6">
-          <Section title="Roles" description={canAssign ? "A person's access is the combination of all their roles." : undefined}>
-            <RolesEditor
-              userId={user.id}
-              assigned={assigned}
-              editable={canAssign}
-              roles={roles.map(({ permissions, ...r }) => ({
-                ...r,
-                permissions: permissions.map((p) => p.permissionKey),
-                grantable:
-                  ungrantable(
-                    actor,
-                    permissions.map((p) => p.permissionKey),
-                  ).length === 0,
-              }))}
-            />
-          </Section>
+      <PageTabs
+        basePath={`/admin/users/${user.id}`}
+        current={tab}
+        tabs={[
+          { key: "profile", label: "Profile" },
+          { key: "access", label: "Roles & access" },
+          ...(activity ? [{ key: "activity", label: "Activity" }] : []),
+        ]}
+      />
 
-          <Section
-            title="Permissions"
-            description="Effective access, where it comes from, and per-person exceptions. Deny always wins over roles."
-          >
-            <AccessMatrix
-              userId={user.id}
-              isMasterAdmin={user.isMasterAdmin}
-              editable={canAssign}
-              roleSources={roleSources}
-              overrides={user.permissionOverrides.map((o) => ({ ...o, reason: o.reason ?? undefined }))}
-              grantable={ALL_PERMISSIONS.filter((p) => actor.permissions.has(p.key)).map((p) => p.key)}
-              modules={PERMISSION_MODULES.map((m) => ({
-                key: m.key,
-                label: m.label,
-                permissions: m.permissions.map((p) => {
-                  const row = permRows[`${m.key}.${p.action}`];
-                  return { key: row.key, label: row.label, description: row.description, isSensitive: !!row.sensitive };
-                }),
-              }))}
-            />
-          </Section>
+      <div className={cn("grid gap-6", tab === "profile" && "lg:grid-cols-2")}>
+        <div className="grid min-w-0 content-start gap-6">
+          {tab === "access" && (
+            <Section title="Roles" description={canAssign ? "A person's access is the combination of all their roles." : undefined}>
+              <RolesEditor
+                userId={user.id}
+                assigned={assigned}
+                editable={canAssign}
+                roles={roles.map(({ permissions, ...r }) => ({
+                  ...r,
+                  permissions: permissions.map((p) => p.permissionKey),
+                  grantable:
+                    ungrantable(
+                      actor,
+                      permissions.map((p) => p.permissionKey),
+                    ).length === 0,
+                }))}
+              />
+            </Section>
+          )}
+
+          {tab === "access" && (
+            <Section
+              title="Permissions"
+              description="Effective access, where it comes from, and per-person exceptions. Deny always wins over roles."
+            >
+              <AccessMatrix
+                userId={user.id}
+                isMasterAdmin={user.isMasterAdmin}
+                editable={canAssign}
+                roleSources={roleSources}
+                overrides={user.permissionOverrides.map((o) => ({ ...o, reason: o.reason ?? undefined }))}
+                grantable={ALL_PERMISSIONS.filter((p) => actor.permissions.has(p.key)).map((p) => p.key)}
+                modules={PERMISSION_MODULES.map((m) => ({
+                  key: m.key,
+                  label: m.label,
+                  permissions: m.permissions.map((p) => {
+                    const row = permRows[`${m.key}.${p.action}`];
+                    return { key: row.key, label: row.label, description: row.description, isSensitive: !!row.sensitive };
+                  }),
+                }))}
+              />
+            </Section>
+          )}
         </div>
 
         <div className="grid content-start gap-6">
-          <Section title="Profile">
-            <EditProfileForm user={user} departments={departments} disabled={!can(actor, "users.edit") || protectedTarget} />
-          </Section>
+          {tab === "profile" && (
+            <Section title="Profile">
+              <EditProfileForm user={user} departments={departments} disabled={!can(actor, "users.edit") || protectedTarget} />
+            </Section>
+          )}
 
-          <Section title="Account">
-            <AccountActions
-              user={user}
-              isSelf={isSelf}
-              isActorMaster={actor.isMasterAdmin}
-              canSuspend={can(actor, "users.suspend") && !protectedTarget}
-              canReset={can(actor, "users.reset_password") && !protectedTarget}
-            />
-          </Section>
+          {tab === "profile" && (
+            <Section title="Account">
+              <AccountActions
+                user={user}
+                isSelf={isSelf}
+                isActorMaster={actor.isMasterAdmin}
+                canSuspend={can(actor, "users.suspend") && !protectedTarget}
+                canReset={can(actor, "users.reset_password") && !protectedTarget}
+              />
+            </Section>
+          )}
 
-          {(user.committees.length > 0 || user.headOfDepartments.length > 0) && (
+          {tab === "profile" && (user.committees.length > 0 || user.headOfDepartments.length > 0) && (
             <Section title="Responsibilities">
               <ul className="grid gap-2 text-sm">
                 {user.headOfDepartments.map((d) => (
@@ -163,7 +183,7 @@ export default async function UserDetailPage(props: PageProps<"/admin/users/[id]
             </Section>
           )}
 
-          {activity && (
+          {tab === "activity" && activity && (
             <Section
               title="Activity"
               actions={

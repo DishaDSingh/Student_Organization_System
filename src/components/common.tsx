@@ -179,3 +179,41 @@ export function Pagination({
     </div>
   );
 }
+
+/**
+ * Link-based tabs (?tab=…). Keeps busy pages to one topic at a time, works
+ * without client JavaScript, and survives refresh / back / shared links.
+ */
+export function PageTabs({
+  tabs,
+  current,
+  basePath,
+}: {
+  tabs: { key: string; label: string; count?: number }[];
+  current: string;
+  basePath: string;
+}) {
+  return (
+    <nav className="-mx-1 mb-6 flex gap-1 overflow-x-auto border-b px-1" aria-label="Sections">
+      {tabs.map((t, i) => (
+        <Link
+          key={t.key}
+          href={i === 0 ? basePath : `${basePath}?tab=${t.key}`}
+          aria-current={current === t.key ? "page" : undefined}
+          scroll={false}
+          className={cn(
+            "-mb-px border-b-2 px-3 py-2 text-sm whitespace-nowrap transition-colors",
+            current === t.key ? "border-primary text-foreground font-medium" : "text-muted-foreground hover:text-foreground border-transparent",
+          )}
+        >
+          {t.label}
+          {t.count !== undefined && <span className="text-muted-foreground ml-1.5 tabular-nums">{t.count}</span>}
+        </Link>
+      ))}
+    </nav>
+  );
+}
+
+/** Pick the active tab from searchParams, falling back to the first. */
+export const activeTab = <K extends string>(keys: readonly K[], value: string | string[] | undefined): K =>
+  (keys as readonly string[]).includes(typeof value === "string" ? value : "") ? (value as K) : keys[0];
