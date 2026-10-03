@@ -97,6 +97,7 @@ model User {
   volunteerProfile    VolunteerProfile?
   expensesSubmitted   Expense[]          @relation("ExpenseSubmitter")
   expensesReviewed    Expense[]          @relation("ExpenseReviewer")
+  reportsCreated      Report[]           @relation("ReportCreator")
   fundraisersLed      Fundraiser[]       @relation("FundraiserLead")
   tasksAssigned       Task[]             @relation("TaskAssignee")
   tasksCreated        Task[]             @relation("TaskCreator")
@@ -913,4 +914,27 @@ model Budget {
   updatedById  String?
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
+}
+
+// ─── Reports & summaries (Phases 12, 13, 20) ─────────────────────────────────
+
+/// A generated, human-edited report. Sections are [{ heading, body }].
+model Report {
+  id          String    @id @default(cuid())
+  type        String
+  title       String
+  subjectId   String?
+  periodFrom  DateTime?
+  periodTo    DateTime?
+  sections    Json
+  status      String    @default("DRAFT")
+  source      String    @default("template")
+  createdById String?
+  updatedById String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  createdBy User? @relation("ReportCreator", fields: [createdById], references: [id], onDelete: SetNull)
+
+  @@index([type, createdAt])
 }

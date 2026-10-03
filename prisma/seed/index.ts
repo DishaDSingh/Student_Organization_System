@@ -18,6 +18,7 @@ async function main() {
   try {
     console.log(`Resetting demo data (${SEED_SIZE} dataset)…`);
     // Children before parents. Later phases prepend their tables here.
+    await db.report.deleteMany();
     await db.budget.deleteMany();
     await db.expense.deleteMany();
     await db.task.deleteMany();
