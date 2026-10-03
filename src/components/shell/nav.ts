@@ -1,5 +1,9 @@
 import {
+  BadgeIndianRupeeIcon,
   Building2Icon,
+  IdCardIcon,
+  ScanLineIcon,
+  UserRoundCheckIcon,
   HistoryIcon,
   LayoutDashboardIcon,
   type LucideIcon,
@@ -32,6 +36,14 @@ export const NAV: NavGroup[] = [
     items: [{ href: "/dashboard", label: "Dashboard", icon: LayoutDashboardIcon, keywords: "home overview" }],
   },
   {
+    label: "Membership",
+    items: [
+      { href: "/members", label: "Members", icon: UserRoundCheckIcon, anyOf: ["members.view"], keywords: "dues renewals expiry" },
+      { href: "/members/verify", label: "Verify pass", icon: ScanLineIcon, anyOf: ["members.verify"], keywords: "scan qr door check" },
+      { href: "/members/plans", label: "Plans & benefits", icon: BadgeIndianRupeeIcon, anyOf: ["members.view"], keywords: "price dues" },
+    ],
+  },
+  {
     label: "Administration",
     items: [
       { href: "/admin/users", label: "Users", icon: UsersIcon, anyOf: ["users.view"], keywords: "people accounts" },
@@ -44,7 +56,11 @@ export const NAV: NavGroup[] = [
   },
   {
     label: "You",
-    items: [{ href: "/profile", label: "My profile & access", icon: UserCircleIcon, keywords: "password account" }],
+    items: [
+      { href: "/me/pass", label: "My pass", icon: IdCardIcon, keywords: "qr digital card" },
+      { href: "/me", label: "My membership", icon: BadgeIndianRupeeIcon, keywords: "renew dues join" },
+      { href: "/profile", label: "My profile & access", icon: UserCircleIcon, keywords: "password account" },
+    ],
   },
 ];
 

@@ -4,7 +4,7 @@
 finance in one place, with role-based access, a full audit trail and (in later phases) an AI layer that explains its
 reasoning.
 
-> Built phase by phase. Phases 1–2 (Master Admin, organization setup, role & permission engine) are complete.
+> Built phase by phase. Complete: **Phases 1–2** (Master Admin, organization setup, role & permission engine) and **Phase 3** (membership, dues, renewals and the digital member pass).
 
 ---
 
@@ -17,7 +17,7 @@ npm install                 # also generates the Prisma client
 cp .env.example .env        # then set AUTH_SECRET (command is in the file)
 npm run db:up               # local PostgreSQL 17 on port 5433
 npm run db:migrate          # create tables
-npm run db:seed             # demo dataset (~430 people, roles, committees, audit history)
+npm run db:seed             # demo dataset (~430 people, 400+ members, 600+ payments, audit history)
 npm run dev                 # http://localhost:3000
 ```
 
@@ -37,6 +37,10 @@ All seeded accounts share the password defined as `DEMO_PASSWORD` in [`prisma/se
 | Security Head | `security@horizon.test`  | Only preset with CCTV permissions                            |
 
 Other personas: `vp@`, `volunteers@`, `merch@`, `comms@`, `deputy.events@`, `fundraising@` (all `@horizon.test`).
+
+Membership stories baked into the data: **42 members expire within 7 days**, 14 sign-ups are waiting for payment
+confirmation (most with a UPI reference to check), and 48 lapsed members never renewed. Every seeded member's
+standing is visible on **/members**; regular members see their own pass at **/me/pass**.
 
 ---
 
@@ -73,6 +77,16 @@ Each phase lists only what it **adds**. Nothing is added unless it earns its pla
 | Demo data  | **Faker** (`en_IN`, fixed seed)                         | Realistic, reproducible, privacy-safe dataset                                   |
 | Tooling    | ESLint, Prettier, GitHub Actions CI                     | Same checks locally and on every pull request                                   |
 
+### Phase 3 · Member management & digital pass
+
+| Adds                                     | Why                                                                                    |
+| ---------------------------------------- | -------------------------------------------------------------------------------------- |
+| **`qrcode`**                             | Server-rendered SVG QR codes for passes and UPI payment links — no external QR service |
+| **`jsqr`**                               | Decodes the door scanner's camera frames in the browser, so pass checks work offline   |
+| **UPI deep links** (`upi://`)            | Members pay the exact dues from any UPI app; no payment gateway or fees needed         |
+| **Next.js `instrumentation`**            | Runs local background jobs (renewal reminders every 6 h) without a cloud scheduler     |
+| **Short polling** (`/api/notifications`) | Notification bell stays current (30 s + on focus) with zero extra infrastructure       |
+
 ---
 
 ## What's in Phase 1–2
@@ -95,6 +109,26 @@ Each phase lists only what it **adds**. Nothing is added unless it earns its pla
 - **Anti-escalation rules**: you can only grant or revoke permissions you hold; non-masters can't change their own access
   or touch a Master Admin.
 - Navigation, pages, server actions and APIs are all permission-checked server-side; the sidebar hides what you can't use.
+
+**Phase 3 — Membership**
+
+- **Plans & benefits** (Semester / Annual / Two-Year / Alumni) with prices in paise and benefits per plan.
+- **Registration three ways**: desk registration by staff (cash/UPI/card/bank, receipt issued instantly), public
+  self sign-up at `/join` (honeypot + rate limit, can be switched off), or renewal from **My membership**.
+- **Status that can't go stale**: only _pending / active / cancelled_ are stored — _expiring_ (≤ 30 days) and _expired_
+  are derived from dates at read time and filtered in SQL.
+- **Renewals stack**: a renewal starts the day after the current term ends, so paying early never loses days. Every term
+  is kept as history.
+- **Payments**: receipt numbers (`RCP-2026-00042`), method + transaction reference, who received it. A member can submit
+  their UPI reference; the treasurer checks it and confirms.
+- **Digital member pass**: member number, status, validity, eligible benefits, committees and contribution history, a
+  QR code, and a live ticking clock so a screenshot is easy to spot. Members can rotate their QR if it leaks.
+- **Door verification**: camera scanner + manual lookup. A scanned QR opens a big green/red result — only for people with
+  `members.verify`, so a stranger scanning a pass learns nothing. Every check is logged.
+- **Renewal reminders**: in-app notifications at 30 / 7 / 1 days before expiry and after lapsing, idempotent via
+  dedupe keys. Staff can also trigger them manually.
+- New permission **`members.manage_plans`** (Treasurer, Secretary). Recording dues needs `members.edit` or
+  `finance.record_income`.
 
 **Cross-cutting**
 
