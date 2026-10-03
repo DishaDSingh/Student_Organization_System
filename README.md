@@ -4,7 +4,7 @@
 finance in one place, with role-based access, a full audit trail and (in later phases) an AI layer that explains its
 reasoning.
 
-> Built phase by phase. Complete: **Phases 1–2** (Master Admin, organization setup, role & permission engine) **Phase 3** (membership, dues, renewals, digital pass) and **Phase 4** (events, tickets, check-in, live command center).
+> Built phase by phase. Complete: **Phases 1–2** (Master Admin, organization setup, role & permission engine) **Phase 3** (membership, dues, renewals, digital pass) **Phase 4** (events, tickets, check-in, live command center) and **Phase 5** (merchandise, inventory, AI Merch Studio).
 
 ---
 
@@ -99,6 +99,17 @@ Each phase lists only what it **adds**. Nothing is added unless it earns its pla
 | **Atomic SQL counters**                         | `UPDATE … WHERE allocated + n <= quantity` reserves seats, so the last ticket can't be sold twice |
 | Shared **jsQR** scanner                         | Same offline camera scanner for passes and tickets; continuous mode for busy doors                |
 
+### Phase 5 · Merchandise & AI Merch Studio
+
+| Adds                                                            | Why                                                                                         |
+| --------------------------------------------------------------- | ------------------------------------------------------------------------------------------- |
+| **`@anthropic-ai/sdk`** (`claude-opus-5-5`, structured outputs) | "Generate with AI" designs print-ready SVG artwork; responses are schema-validated          |
+| **Offline template designer**                                   | Five SVG print styles generated locally — the studio works with no internet or API key      |
+| **Vector mockups + CSS 3D**                                     | Hoodie / tee / cap / tote / mug previews you can rotate — no image assets, no WebGL         |
+| **Local file storage** (`storage/uploads`)                      | Logo uploads (and receipts in Phase 8) with content sniffing and permission-checked serving |
+
+Set `ANTHROPIC_API_KEY` in `.env` to enable AI features; without it they fall back to their offline mode automatically.
+
 ---
 
 ## What's in Phase 1–2
@@ -153,6 +164,17 @@ Each phase lists only what it **adds**. Nothing is added unless it earns its pla
 - Attendance, no-shows, revenue and refunds per event; cancelling an event voids unpaid orders and notifies holders.
 - **Event Command Center**: tickets sold, people inside, revenue, arrivals per 10 minutes, latest check-ins and
   timestamped incidents — streamed live.
+
+**Phase 5 — Merchandise & Merch Studio**
+
+- Products with size × colour **variants**, member pricing (15% off), unit cost and margin, draft/on-sale/archived.
+- **Inventory**: atomic stock changes (the last M hoodie can't be sold twice), reorder levels, low-stock flags,
+  30-day sales per size, stock value at cost, and a **stock movement log** for every change ("30 → 29, sale MRC-…").
+- **Orders**: online (items held 48 h, UPI QR) and desk sales; confirm payment → collect → done; cancel/refund puts
+  stock back.
+- **Merch Studio**: upload a logo, **generate artwork with AI** (or the offline templates), pick colours and sizes,
+  preview front/back in a rotatable **3D-style mockup**, see cost/margin/member price, send for review. A **different
+  person** must approve (four-eyes rule), then one click creates a draft product. Previews are labelled as previews.
 
 **Cross-cutting**
 

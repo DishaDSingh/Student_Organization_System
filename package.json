@@ -23,6 +23,7 @@
     "db:seed:full": "cross-env SEED_SIZE=full prisma db seed"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.131.0",
     "@hookform/resolvers": "^5.9.1",
     "@prisma/adapter-pg": "^7.10.0",
     "@prisma/client": "^7.10.0",

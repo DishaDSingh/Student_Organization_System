@@ -442,7 +442,14 @@ export async function seedEvents(db: Db) {
     const status = spec.status ?? "PUBLISHED";
     const salesOpenAt = spec.salesOpenDaysBefore ? new Date(startsAt.getTime() - spec.salesOpenDaysBefore * DAY) : null;
     const organizer = faker.helpers.arrayElement(eventHeads);
-    const createdAt = new Date((salesOpenAt ?? startsAt).getTime() - faker.number.int({ min: 5, max: 20 }) * DAY);
+    // Never in the future: a draft planned for next year was still created in the past.
+    const createdAt = new Date(
+      Math.min(
+        now.getTime() - faker.number.int({ min: 1, max: 30 }) * DAY,
+        (salesOpenAt ?? startsAt).getTime() - faker.number.int({ min: 5, max: 20 }) * DAY,
+      ),
+    );
+    const publishedAt = new Date(Math.min(now.getTime() - 3600_000, (salesOpenAt ?? createdAt).getTime()));
 
     eventRows.push({
       id: eventId,
@@ -459,7 +466,7 @@ export async function seedEvents(db: Db) {
       createdById: organizer.id,
       committeeId: committeeFor(spec.title),
       cancelledReason: spec.cancelledReason ?? null,
-      publishedAt: status === "DRAFT" ? null : (salesOpenAt ?? createdAt),
+      publishedAt: status === "DRAFT" ? null : publishedAt,
       createdAt,
     });
     auditRows.push({
@@ -479,7 +486,7 @@ export async function seedEvents(db: Db) {
         entityType: "Event",
         entityId: eventId,
         summary: `Published "${spec.title}" — tickets are on sale`,
-        createdAt: salesOpenAt ?? createdAt,
+        createdAt: publishedAt,
       });
     }
 

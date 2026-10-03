@@ -376,3 +376,111 @@ export const checkInSchema = z.object({
     .trim()
     .regex(/^[A-Za-z0-9_-]{16,64}$/, "Not a ticket code"),
 });
+
+// ─── Merchandise (Phase 5) ───────────────────────────────────────────────────
+
+const PRODUCT_CATEGORIES = ["Hoodie", "T-shirt", "Cap", "Tote", "Mug"] as const;
+const SIZES = ["XS", "S", "M", "L", "XL", "XXL", "ONE"] as const;
+const hex = z.string().regex(/^#[0-9a-fA-F]{6}$/, "Pick a colour");
+
+export const productSchema = z
+  .object({
+    productId: optionalId,
+    name: z.string().trim().min(3, "At least 3 characters").max(60, "At most 60 characters"),
+    category: z.enum(PRODUCT_CATEGORIES, { error: "Choose a category" }),
+    description: optionalText(500, "Description"),
+    publicPriceRupees: rupees,
+    memberPriceRupees: rupees,
+    unitCostRupees: rupees,
+    status: z.enum(["DRAFT", "ACTIVE", "ARCHIVED"]),
+  })
+  .refine((v) => v.memberPriceRupees <= v.publicPriceRupees, {
+    path: ["memberPriceRupees"],
+    message: "Member price can't exceed the regular price",
+  });
+
+export const newProductSchema = productSchema.and(
+  z.object({
+    sizes: z.array(z.enum(SIZES)).min(1, "Pick at least one size").max(7),
+    colors: z
+      .array(z.object({ name: z.string().trim().min(2, "Name the colour").max(20), hex }))
+      .min(1, "Add at least one colour")
+      .max(6, "At most 6 colours"),
+    initialStock: z.coerce.number().int().min(0).max(1000),
+    reorderLevel: z.coerce.number().int().min(0).max(500),
+  }),
+);
+
+export const stockAdjustSchema = z
+  .object({
+    variantId: id,
+    reason: z.enum(["RESTOCK", "ADJUSTMENT", "DAMAGED"]),
+    change: z.coerce.number().int("Whole units").min(-1000).max(1000),
+    note: optionalText(200, "Note"),
+  })
+  .refine((v) => v.change !== 0, { path: ["change"], message: "Enter a non-zero quantity" })
+  .refine((v) => v.reason !== "RESTOCK" || v.change > 0, { path: ["change"], message: "A restock adds units" })
+  .refine((v) => v.reason !== "DAMAGED" || v.change < 0, { path: ["change"], message: "Damaged stock removes units" })
+  .refine((v) => v.reason === "RESTOCK" || !!v.note, { path: ["note"], message: "Explain the adjustment" });
+
+export const reorderLevelSchema = z.object({ variantId: id, reorderLevel: z.coerce.number().int().min(0).max(500) });
+
+const merchLines = z
+  .array(z.object({ variantId: id, quantity: z.coerce.number().int().min(1).max(10) }))
+  .min(1, "Choose at least one item")
+  .max(10);
+
+export const buyMerchSchema = z.object({ lines: merchLines, reference: paymentReference });
+
+export const deskMerchSaleSchema = z
+  .object({
+    memberId: optionalId,
+    buyerName: z.preprocess((v) => (v === "" ? undefined : v), personName.optional()),
+    buyerPhone: phone,
+    lines: merchLines,
+    method: z.enum(PAYMENT_METHODS, { error: "Choose how it was paid" }),
+    reference: paymentReference,
+  })
+  .refine((v) => !!v.memberId || !!v.buyerName, { path: ["buyerName"], message: "Enter the buyer's name or pick a member" })
+  .refine((v) => v.method === "CASH" || !!v.reference, { path: ["reference"], message: "Enter the transaction reference" });
+
+export const confirmMerchSchema = z.intersection(z.object({ orderId: id }), paymentFields);
+export const voidMerchSchema = z.object({ orderId: id, reason: z.string().trim().min(3, "Give a short reason").max(200) });
+export const merchOrderIdSchema = z.object({ orderId: id });
+
+const PRODUCT_TYPE_KEYS = ["hoodie", "tshirt", "cap", "tote", "mug"] as const;
+export const designSchema = z
+  .object({
+    designId: optionalId,
+    name: z.string().trim().min(3, "At least 3 characters").max(60),
+    productType: z.enum(PRODUCT_TYPE_KEYS),
+    baseColor: hex,
+    inkColor: hex,
+    frontText: optionalText(40, "Front text"),
+    backText: optionalText(40, "Back text"),
+    artworkSvg: z.preprocess((v) => (v === "" ? undefined : v), z.string().max(60_000).optional()),
+    artworkSource: z.enum(["ai", "template", "upload"]).optional(),
+    aiPrompt: optionalText(300, "Prompt"),
+    logoUploadId: optionalId,
+    sizes: z.array(z.enum(SIZES)).max(7),
+    estimatedCostRupees: rupees,
+    sellingPriceRupees: rupees,
+  })
+  .refine((v) => v.sellingPriceRupees === 0 || v.sellingPriceRupees >= v.estimatedCostRupees, {
+    path: ["sellingPriceRupees"],
+    message: "Selling below cost — double-check the price",
+  });
+
+export const generateArtworkSchema = z.object({
+  prompt: z.string().trim().min(3, "Describe the design").max(300, "At most 300 characters"),
+  productType: z.enum(PRODUCT_TYPE_KEYS),
+  baseColor: hex,
+  inkColor: hex,
+});
+
+export const reviewDesignSchema = z.object({
+  designId: id,
+  decision: z.enum(["APPROVED", "REJECTED"]),
+  note: optionalText(300, "Note"),
+});
+export const designIdSchema = z.object({ designId: id });
