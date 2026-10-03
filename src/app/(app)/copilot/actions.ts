@@ -30,7 +30,8 @@ ${INTENTS.map((i) => `- ${i}: ${INTENT_HELP[i]}`).join("\n")}`;
  */
 export const askCopilot = guardedAction({ permission: "ai.use", schema: askSchema }, async ({ question }, actor) => {
   const ai = await structured({ schema: RouteSchema, system: SYSTEM, content: question, effort: "low", maxTokens: 1000 });
-  const route: Route = ai.ok ? ai.data : routeOffline(question);
+  const routed: Route = ai.ok ? ai.data : routeOffline(question);
+  const route = routed.intent === "memory" ? { ...routed, subject: question } : routed;
   const result = await answer(route, actor);
   await db.$transaction((tx) =>
     audit(tx, {

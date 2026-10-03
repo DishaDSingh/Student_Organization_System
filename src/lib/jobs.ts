@@ -4,11 +4,12 @@ import { syncPermissionCatalog } from "@/lib/rbac/sync";
 import { runRenewalReminders } from "@/lib/membership/reminders";
 import { releaseExpiredHolds } from "@/lib/events/service";
 import { releaseExpiredMerchHolds } from "@/lib/merch/service";
+import { runSmartReminders } from "@/lib/calendar/reminders";
 
 /**
  * Local background jobs — no cloud scheduler needed.
  *  - Keep the Permission table in sync with the code catalog (new phases add permissions).
- *  - Every 30 minutes: renewal reminders (idempotent) and releasing seats held by unpaid orders.
+ *  - Every 30 minutes: renewal + smart reminders (idempotent) and releasing seats/stock held by unpaid orders.
  */
 const EVERY_30_MINUTES = 30 * 60 * 1000;
 const g = globalThis as unknown as { __campusbuzzJobs?: NodeJS.Timeout };
@@ -21,6 +22,8 @@ async function tick(db: PrismaClient) {
     if (released) console.log(`[jobs] released seats from ${released} unpaid order(s)`);
     const merch = await releaseExpiredMerchHolds(db);
     if (merch) console.log(`[jobs] returned stock from ${merch} unpaid merch order(s)`);
+    const reminders = await runSmartReminders(db);
+    if (reminders) console.log(`[jobs] sent ${reminders} smart reminder(s)`);
   } catch (e) {
     console.error("[jobs] background tick failed", e);
   }

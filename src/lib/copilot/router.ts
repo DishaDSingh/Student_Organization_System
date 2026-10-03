@@ -17,6 +17,7 @@ export const INTENTS = [
   "finance_summary",
   "upcoming_events",
   "my_tasks",
+  "memory",
   "help",
 ] as const;
 export type Intent = (typeof INTENTS)[number];
@@ -35,12 +36,17 @@ export const INTENT_HELP: Record<Intent, string> = {
   finance_summary: "How much came in / went out this month?",
   upcoming_events: "What events are coming up?",
   my_tasks: "What tasks are assigned to me?",
+  memory: "What happened during last year's Gala? (searches past events, reports, decisions, lessons)",
   help: "Anything else — shows what I can answer.",
 };
 
 const RULES: [Intent, RegExp][] = [
   ["my_tasks", /\bmy (open )?tasks?\b|assigned to me|what (should|do) i (do|work on)/],
   ["attention", /attention|to-?do|priorit|urgent|anything wrong|alerts?\b|today\b.*(need|do)/],
+  [
+    "memory",
+    /what happened|last year|previous year|history|lessons?( learned)?|did we decide|decided|decision|remember|vendors?|sponsors?/,
+  ],
   ["pending_reimbursements", /reimburs|pay(ing)? back|paid back|owed|pending (claims?|expenses?)|expense claims?/],
   ["expiring_memberships", /expir|renewals? due|lapsing/],
   ["active_members", /how many .*members|member count|active members|number of members|membership (count|numbers)/],
@@ -82,7 +88,9 @@ export function routeOffline(question: string): Route {
   const q = question.toLowerCase();
   const intent = RULES.find(([, re]) => re.test(q))?.[0] ?? "help";
   const needsSubject = intent === "event_money" || intent === "stock_left" || intent === "fundraiser_progress";
-  return { intent, subject: needsSubject ? extractSubject(question) : null, period: extractPeriod(q) };
+  // Memory search works best on the whole question ("last year", names, topics).
+  const subject = intent === "memory" ? question : needsSubject ? extractSubject(question) : null;
+  return { intent, subject, period: extractPeriod(q) };
 }
 
 /** How well a title matches a free-text subject: share of subject words found in the title. */

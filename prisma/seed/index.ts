@@ -6,6 +6,7 @@ import { seedEvents } from "./events";
 import { seedMerch } from "./merch";
 import { seedFundraisers } from "./fundraisers";
 import { seedFinance } from "./finance";
+import { seedMemory } from "./memory";
 
 /**
  * `npm run db:seed` — wipes the local database and rebuilds the demo dataset.
@@ -18,6 +19,9 @@ async function main() {
   try {
     console.log(`Resetting demo data (${SEED_SIZE} dataset)…`);
     // Children before parents. Later phases prepend their tables here.
+    await db.memoryItem.deleteMany();
+    await db.calendarEntry.deleteMany();
+    await db.meeting.deleteMany();
     await db.report.deleteMany();
     await db.budget.deleteMany();
     await db.expense.deleteMany();
@@ -73,6 +77,9 @@ async function main() {
 
     console.log("Phase 7-8: expenses and reimbursements...");
     console.table(await seedFinance(db));
+
+    console.log("Phases 14-19: memory, meetings, calendar deadlines...");
+    console.table(await seedMemory(db));
   } finally {
     await db.$disconnect();
   }
