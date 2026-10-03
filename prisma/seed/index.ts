@@ -4,6 +4,7 @@ import { seedPeople } from "./people";
 import { seedMembership } from "./membership";
 import { seedEvents } from "./events";
 import { seedMerch } from "./merch";
+import { seedFundraisers } from "./fundraisers";
 
 /**
  * `npm run db:seed` — wipes the local database and rebuilds the demo dataset.
@@ -16,6 +17,8 @@ async function main() {
   try {
     console.log(`Resetting demo data (${SEED_SIZE} dataset)…`);
     // Children before parents. Later phases prepend their tables here.
+    await db.task.deleteMany();
+    await db.volunteerProfile.deleteMany();
     await db.stockMovement.deleteMany();
     await db.merchOrderItem.deleteMany();
     await db.eventIncident.deleteMany();
@@ -28,6 +31,7 @@ async function main() {
     await db.productVariant.deleteMany();
     await db.product.deleteMany();
     await db.merchDesign.deleteMany();
+    await db.fundraiser.deleteMany();
     await db.upload.deleteMany();
     await db.ticketType.deleteMany();
     await db.event.deleteMany();
@@ -59,6 +63,9 @@ async function main() {
 
     console.log("Phase 5: merchandise, stock, orders, studio designs…");
     console.table(await seedMerch(db));
+
+    console.log("Phase 6: volunteers, fundraisers, tasks, donations…");
+    console.table(await seedFundraisers(db));
   } finally {
     await db.$disconnect();
   }
