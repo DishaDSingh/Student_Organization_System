@@ -94,6 +94,10 @@ model User {
   designsCreated      MerchDesign[]      @relation("DesignCreator")
   designsReviewed     MerchDesign[]      @relation("DesignReviewer")
   uploads             Upload[]
+  volunteerProfile    VolunteerProfile?
+  fundraisersLed      Fundraiser[]       @relation("FundraiserLead")
+  tasksAssigned       Task[]             @relation("TaskAssignee")
+  tasksCreated        Task[]             @relation("TaskCreator")
 
   @@index([status])
   @@index([departmentId])
@@ -127,10 +131,11 @@ model Committee {
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
 
-  department Department?       @relation(fields: [departmentId], references: [id], onDelete: SetNull)
-  chair      User?             @relation("CommitteeChair", fields: [chairId], references: [id], onDelete: SetNull)
-  members    CommitteeMember[]
-  events     Event[]
+  department  Department?       @relation(fields: [departmentId], references: [id], onDelete: SetNull)
+  chair       User?             @relation("CommitteeChair", fields: [chairId], references: [id], onDelete: SetNull)
+  members     CommitteeMember[]
+  events      Event[]
+  fundraisers Fundraiser[]
 }
 
 model CommitteeMember {
@@ -360,6 +365,7 @@ model Payment {
   membershipId  String?
   ticketOrderId String?        @unique
   merchOrderId  String?        @unique
+  fundraiserId  String?
   amountPaise   Int
   method        PaymentMethod
   reference     String?
@@ -374,6 +380,7 @@ model Payment {
   membership  Membership?  @relation(fields: [membershipId], references: [id], onDelete: SetNull)
   ticketOrder TicketOrder? @relation(fields: [ticketOrderId], references: [id], onDelete: SetNull)
   merchOrder  MerchOrder?  @relation(fields: [merchOrderId], references: [id], onDelete: SetNull)
+  fundraiser  Fundraiser?  @relation(fields: [fundraiserId], references: [id], onDelete: SetNull)
 
   @@index([purpose, paidAt])
   @@index([payerId])
@@ -459,6 +466,8 @@ model Event {
   orders      TicketOrder[]
   tickets     Ticket[]
   incidents   EventIncident[]
+  fundraisers Fundraiser[]
+  tasks       Task[]
 
   @@index([status, startsAt])
 }
@@ -750,4 +759,97 @@ model MerchDesign {
   createdBy  User?    @relation("DesignCreator", fields: [createdById], references: [id], onDelete: SetNull)
   reviewedBy User?    @relation("DesignReviewer", fields: [reviewedById], references: [id], onDelete: SetNull)
   product    Product?
+}
+
+// ─── Volunteers & fundraisers (Phase 6) ──────────────────────────────────────
+
+/// What a volunteer can do and when — the inputs to smart matching.
+model VolunteerProfile {
+  id              String   @id @default(cuid())
+  userId          String   @unique
+  skills          String[]
+  interests       String[]
+  /// Slots like "WEEKDAY_MORNING", "WEEKEND_EVENING" (see src/lib/volunteers/rules.ts).
+  availability    String[]
+  maxHoursPerWeek Int      @default(6)
+  bio             String?
+  isActive        Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+enum FundraiserStatus {
+  PLANNING
+  ACTIVE
+  COMPLETED
+  CANCELLED
+}
+
+model Fundraiser {
+  id          String           @id @default(cuid())
+  title       String           @unique
+  description String?
+  cause       String
+  goalPaise   Int
+  startsAt    DateTime
+  endsAt      DateTime
+  status      FundraiserStatus @default(PLANNING)
+  leadId      String?
+  committeeId String?
+  eventId     String?
+  createdById String?
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+
+  lead      User?      @relation("FundraiserLead", fields: [leadId], references: [id], onDelete: SetNull)
+  committee Committee? @relation(fields: [committeeId], references: [id], onDelete: SetNull)
+  event     Event?     @relation(fields: [eventId], references: [id], onDelete: SetNull)
+  tasks     Task[]
+  payments  Payment[]
+
+  @@index([status, endsAt])
+}
+
+enum TaskStatus {
+  TODO
+  IN_PROGRESS
+  BLOCKED
+  DONE
+}
+
+enum TaskPriority {
+  LOW
+  MEDIUM
+  HIGH
+}
+
+/// Work item for a fundraiser or an event. Volunteers update their own tasks.
+model Task {
+  id             String       @id @default(cuid())
+  title          String
+  description    String?
+  fundraiserId   String?
+  eventId        String?
+  assigneeId     String?
+  createdById    String?
+  status         TaskStatus   @default(TODO)
+  priority       TaskPriority @default(MEDIUM)
+  requiredSkills String[]
+  dueAt          DateTime?
+  estimatedHours Float?
+  loggedHours    Float        @default(0)
+  completedAt    DateTime?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  fundraiser Fundraiser? @relation(fields: [fundraiserId], references: [id], onDelete: Cascade)
+  event      Event?      @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  assignee   User?       @relation("TaskAssignee", fields: [assigneeId], references: [id], onDelete: SetNull)
+  createdBy  User?       @relation("TaskCreator", fields: [createdById], references: [id], onDelete: SetNull)
+
+  @@index([assigneeId, status])
+  @@index([fundraiserId, status])
+  @@index([eventId, status])
 }

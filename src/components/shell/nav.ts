@@ -1,6 +1,8 @@
 import {
   BadgeIndianRupeeIcon,
   CalendarDaysIcon,
+  HandHeartIcon,
+  HandCoinsIcon,
   ShirtIcon,
   ShoppingBagIcon,
   TicketIcon,
@@ -44,6 +46,8 @@ export const NAV: NavGroup[] = [
     items: [
       { href: "/events", label: "Events", icon: CalendarDaysIcon, keywords: "gala tickets check-in" },
       { href: "/merch", label: "Merch", icon: ShirtIcon, keywords: "hoodie tshirt store inventory studio" },
+      { href: "/fundraisers", label: "Fundraisers", icon: HandCoinsIcon, anyOf: ["fundraisers.view"], keywords: "donations goal tasks" },
+      { href: "/volunteers", label: "Volunteers", icon: HandHeartIcon, anyOf: ["volunteers.view"], keywords: "helpers roster" },
     ],
   },
   {
@@ -71,6 +75,7 @@ export const NAV: NavGroup[] = [
       { href: "/me/pass", label: "My pass", icon: IdCardIcon, keywords: "qr digital card" },
       { href: "/me/tickets", label: "My tickets", icon: TicketIcon, keywords: "qr entry orders" },
       { href: "/me/orders", label: "My orders", icon: ShoppingBagIcon, keywords: "merch purchases" },
+      { href: "/me/volunteering", label: "Volunteering", icon: HandHeartIcon, keywords: "my tasks help" },
       { href: "/me", label: "My membership", icon: BadgeIndianRupeeIcon, keywords: "renew dues join" },
       { href: "/profile", label: "My profile & access", icon: UserCircleIcon, keywords: "password account" },
     ],

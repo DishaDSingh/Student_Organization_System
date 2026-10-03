@@ -484,3 +484,109 @@ export const reviewDesignSchema = z.object({
   note: optionalText(300, "Note"),
 });
 export const designIdSchema = z.object({ designId: id });
+
+// ─── Volunteers & fundraisers (Phase 6) ──────────────────────────────────────
+
+const SKILL_VALUES = [
+  "Event setup",
+  "Ticketing & check-in",
+  "Crowd management",
+  "First aid",
+  "Photography",
+  "Videography",
+  "Graphic design",
+  "Social media",
+  "Writing",
+  "Public speaking",
+  "Sound & lights",
+  "Cooking & baking",
+  "Sales",
+  "Accounting",
+  "Logistics",
+  "Tech support",
+] as const;
+const INTEREST_VALUES = ["Galas & parties", "Cultural", "Tech", "Sports", "Charity", "Environment", "Workshops", "Alumni", "Food"] as const;
+const SLOT_VALUES = [
+  "WEEKDAY_MORNING",
+  "WEEKDAY_AFTERNOON",
+  "WEEKDAY_EVENING",
+  "WEEKEND_MORNING",
+  "WEEKEND_AFTERNOON",
+  "WEEKEND_EVENING",
+] as const;
+const CAUSE_VALUES = ["Charity", "Environment", "Education", "Health", "Community", "Club funds"] as const;
+const skillList = z.array(z.enum(SKILL_VALUES)).max(10, "At most 10 skills");
+
+export const volunteerProfileSchema = z.object({
+  skills: skillList,
+  interests: z.array(z.enum(INTEREST_VALUES)).max(9),
+  availability: z.array(z.enum(SLOT_VALUES)).min(1, "Pick at least one time you're usually free"),
+  maxHoursPerWeek: z.coerce.number().int().min(1, "At least 1 hour").max(40, "At most 40 hours"),
+  bio: optionalText(300, "About you"),
+  isActive: z.boolean().default(true),
+});
+
+const goalRupees = z.coerce
+  .number({ error: "Enter a goal" })
+  .int("Whole rupees")
+  .min(500, "At least ₹500")
+  .max(10_000_000, "At most ₹1 crore");
+
+export const fundraiserSchema = z
+  .object({
+    fundraiserId: optionalId,
+    title: z.string().trim().min(3, "At least 3 characters").max(100),
+    description: optionalText(1500, "Description"),
+    cause: z.enum(CAUSE_VALUES, { error: "Choose a cause" }),
+    goalRupees,
+    startsAt: dateInput,
+    endsAt: dateInput,
+    status: z.enum(["PLANNING", "ACTIVE", "COMPLETED", "CANCELLED"]),
+    leadId: optionalId,
+    committeeId: optionalId,
+    eventId: optionalId,
+  })
+  .refine((v) => v.endsAt >= v.startsAt, { path: ["endsAt"], message: "Must end on or after the start" });
+
+export const taskSchema = z.object({
+  taskId: optionalId,
+  title: z.string().trim().min(3, "At least 3 characters").max(120),
+  description: optionalText(1000, "Description"),
+  fundraiserId: optionalId,
+  eventId: optionalId,
+  assigneeId: optionalId,
+  priority: z.enum(["LOW", "MEDIUM", "HIGH"]),
+  requiredSkills: skillList,
+  dueAt: optionalDateTime,
+  estimatedHours: z.preprocess(
+    (v) => (v === "" || v == null ? undefined : v),
+    z.coerce.number().min(0.5, "At least 30 minutes").max(100).optional(),
+  ),
+});
+
+export const taskStatusSchema = z.object({ taskId: id, status: z.enum(["TODO", "IN_PROGRESS", "BLOCKED", "DONE"]) });
+export const logHoursSchema = z.object({
+  taskId: id,
+  hours: z.coerce.number().min(0.25, "At least 15 minutes").max(24, "At most 24 hours at a time"),
+});
+export const assignTaskSchema = z.object({ taskId: id, assigneeId: z.preprocess((v) => (v === "" ? null : v), id.nullable()) });
+
+export const donationSchema = z
+  .object({
+    fundraiserId: id,
+    memberId: optionalId,
+    donorName: z.preprocess((v) => (v === "" ? undefined : v), personName.optional()),
+    anonymous: z.boolean().default(false),
+    amountRupees: z.coerce
+      .number({ error: "Enter an amount" })
+      .min(1, "At least ₹1")
+      .max(1_000_000, "Over ₹10 lakh — record it with the treasurer"),
+    method: z.enum(PAYMENT_METHODS, { error: "Choose how it was paid" }),
+    reference: paymentReference,
+    note: optionalText(200, "Note"),
+  })
+  .refine((v) => v.anonymous || !!v.memberId || !!v.donorName, {
+    path: ["donorName"],
+    message: "Enter the donor's name, pick a member, or mark anonymous",
+  })
+  .refine((v) => v.method === "CASH" || !!v.reference, { path: ["reference"], message: "Enter the transaction reference" });
