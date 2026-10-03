@@ -4,7 +4,7 @@
 finance in one place, with role-based access, a full audit trail and (in later phases) an AI layer that explains its
 reasoning.
 
-> Built phase by phase. Complete: **Phases 1–2** (Master Admin, organization setup, role & permission engine) **Phase 3** (membership, dues, renewals, digital pass) **Phase 4** (events, tickets, check-in, live command center) and **Phase 5** (merchandise, inventory, AI Merch Studio).
+> Built phase by phase. Complete: **Phases 1–2** (Master Admin, organization setup, role & permission engine) **Phase 3** (membership, dues, renewals, digital pass) **Phase 4** (events, tickets, check-in, live command center) **Phase 5** (merchandise, inventory, AI Merch Studio), **Phase 6** (fundraisers, tasks, volunteer matching) and **Phases 7–8** (finance, expenses, AI receipt scanner).
 
 ---
 
@@ -43,7 +43,9 @@ Stories baked into the data (numbers for the full dataset): **42 members expire 
 confirmation (most with a UPI reference to check), and 48 lapsed members never renewed. Every seeded member's
 standing is visible on **/members**; regular members see their own pass at **/me/pass**. **Diwali Gala Night 2026** (in
 ~5 weeks) has ticket sales that started strong and then slowed, and the **Freshers' Welcome Mixer** is live today, so the
-command center shows real arrivals.
+command center shows real arrivals. The **Winter Clothes Drive** fundraiser is behind its goal with two overdue tasks.
+On **/finance** the treasurer has a queue of expense claims to review (Freshers snacks among them) and four people
+waiting to be paid back.
 
 ---
 
@@ -107,6 +109,27 @@ Each phase lists only what it **adds**. Nothing is added unless it earns its pla
 | **Offline template designer**                                   | Five SVG print styles generated locally — the studio works with no internet or API key      |
 | **Vector mockups + CSS 3D**                                     | Hoodie / tee / cap / tote / mug previews you can rotate — no image assets, no WebGL         |
 | **Local file storage** (`storage/uploads`)                      | Logo uploads (and receipts in Phase 8) with content sniffing and permission-checked serving |
+
+### Phase 6 · Fundraisers & volunteers
+
+| Adds                     | Why                                                                                                    |
+| ------------------------ | ------------------------------------------------------------------------------------------------------ |
+| **Explainable matching** | Pure scoring function (skills, free time, interests, experience, workload) with a reason for each pick |
+| **Overload guard**       | A volunteer already at their weekly hours drops below anyone with spare time — matching never piles on |
+
+### Phases 7–8 · Finance & AI Receipt Scanner
+
+| Adds                                   | Why                                                                                                         |
+| -------------------------------------- | ----------------------------------------------------------------------------------------------------------- |
+| **One ledger, two sources**            | Money in = receipted payments (dues, tickets, merch, donations); money out = approved expenses              |
+| **Four-eyes approval**                 | Nobody approves their own claim; a still-pending check in the UPDATE stops two treasurers both deciding     |
+| **Claude vision** (structured outputs) | Reads a receipt photo or PDF into shop, date, total, GST and category — it fills the form, a person submits |
+| **Offline receipt reader**             | No key or no internet? Paste the receipt text (phone cameras can copy it) and a local parser fills the form |
+
+### Keeping it simple
+
+Busy pages are split into link-based tabs (`?tab=…`, so refresh, back and shared links still work), and the dashboard
+is a short "Needs your attention" list that only shows items you can act on.
 
 Set `ANTHROPIC_API_KEY` in `.env` to enable AI features; without it they fall back to their offline mode automatically.
 

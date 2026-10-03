@@ -95,6 +95,8 @@ model User {
   designsReviewed     MerchDesign[]      @relation("DesignReviewer")
   uploads             Upload[]
   volunteerProfile    VolunteerProfile?
+  expensesSubmitted   Expense[]          @relation("ExpenseSubmitter")
+  expensesReviewed    Expense[]          @relation("ExpenseReviewer")
   fundraisersLed      Fundraiser[]       @relation("FundraiserLead")
   tasksAssigned       Task[]             @relation("TaskAssignee")
   tasksCreated        Task[]             @relation("TaskCreator")
@@ -466,6 +468,7 @@ model Event {
   orders      TicketOrder[]
   tickets     Ticket[]
   incidents   EventIncident[]
+  expenses    Expense[]
   fundraisers Fundraiser[]
   tasks       Task[]
 
@@ -602,6 +605,7 @@ model Upload {
 
   uploadedBy User?         @relation(fields: [uploadedById], references: [id], onDelete: SetNull)
   designs    MerchDesign[]
+  expenses   Expense[]
 }
 
 // ─── Merchandise (Phase 5) ───────────────────────────────────────────────────
@@ -808,6 +812,7 @@ model Fundraiser {
   event     Event?     @relation(fields: [eventId], references: [id], onDelete: SetNull)
   tasks     Task[]
   payments  Payment[]
+  expenses  Expense[]
 
   @@index([status, endsAt])
 }
@@ -852,4 +857,48 @@ model Task {
   @@index([assigneeId, status])
   @@index([fundraiserId, status])
   @@index([eventId, status])
+}
+
+// ─── Finance (Phases 7–8) ────────────────────────────────────────────────────
+// Money in = Payment rows (dues, tickets, merch, donations).
+// Money out = approved Expense rows.
+
+enum ExpenseStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  REIMBURSED
+}
+
+model Expense {
+  id                 String        @id @default(cuid())
+  description        String
+  category           String
+  vendor             String?
+  amountPaise        Int
+  taxPaise           Int           @default(0)
+  spentAt            DateTime
+  status             ExpenseStatus @default(PENDING)
+  /// The submitter paid out of pocket and should be paid back once approved.
+  needsReimbursement Boolean       @default(false)
+  eventId            String?
+  fundraiserId       String?
+  receiptUploadId    String?
+  /// "manual" or "scan" — whether the receipt scanner filled the form.
+  source             String        @default("manual")
+  submittedById      String?
+  reviewedById       String?
+  reviewedAt         DateTime?
+  reviewNote         String?
+  reimbursedAt       DateTime?
+  createdAt          DateTime      @default(now())
+  updatedAt          DateTime      @updatedAt
+
+  event       Event?      @relation(fields: [eventId], references: [id], onDelete: SetNull)
+  fundraiser  Fundraiser? @relation(fields: [fundraiserId], references: [id], onDelete: SetNull)
+  receipt     Upload?     @relation(fields: [receiptUploadId], references: [id], onDelete: SetNull)
+  submittedBy User?       @relation("ExpenseSubmitter", fields: [submittedById], references: [id], onDelete: SetNull)
+  reviewedBy  User?       @relation("ExpenseReviewer", fields: [reviewedById], references: [id], onDelete: SetNull)
+
+  @@index([status, spentAt])
 }

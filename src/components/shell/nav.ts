@@ -3,6 +3,7 @@ import {
   CalendarDaysIcon,
   HandHeartIcon,
   HandCoinsIcon,
+  WalletIcon,
   ShirtIcon,
   ShoppingBagIcon,
   TicketIcon,
@@ -48,6 +49,13 @@ export const NAV: NavGroup[] = [
       { href: "/merch", label: "Merch", icon: ShirtIcon, keywords: "hoodie tshirt store inventory studio" },
       { href: "/fundraisers", label: "Fundraisers", icon: HandCoinsIcon, anyOf: ["fundraisers.view"], keywords: "donations goal tasks" },
       { href: "/volunteers", label: "Volunteers", icon: HandHeartIcon, anyOf: ["volunteers.view"], keywords: "helpers roster" },
+      {
+        href: "/finance",
+        label: "Finance",
+        icon: WalletIcon,
+        anyOf: ["finance.view", "finance.create_expense"],
+        keywords: "money expenses receipts reimbursement treasurer budget scan",
+      },
     ],
   },
   {
